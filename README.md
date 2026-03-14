@@ -4,6 +4,9 @@ Dataset: Financial Transactions
 
 Source: https://www.kaggle.com/datasets/computingvictor/transactions-fraud-datasets
 
+Project Overview: 
+
+This project uses a dataset of real-world financial transactions to build a normalized relational database for analysis. The goal is to turn the raw dataset into a structured schema with clear primary and foreign keys, normalize the data to 3NF, and make it possible to run useful SQL queries for transaction, card, user, merchant category, and geographic analysis.
 
 Normalization:
 
