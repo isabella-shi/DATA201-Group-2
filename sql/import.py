@@ -36,4 +36,6 @@ if __name__ == "__main__":
     engine = login_db(**db_config)
 
     #Import Users table(NOTE: Update file_path before running)#
-    import_csv_to_table(engine, 'file_path ', 'Users', ['per_capita_income', 'yearly_income', 'total_debt'])
+    import_csv_to_table(engine, 'file_path', 'Users', ['per_capita_income', 'yearly_income', 'total_debt'])
+    #Import Cards table(NOTE: Update file_path before running)#
+    import_csv_to_table(engine, 'file_path', 'Cards', ['credit_limit'])

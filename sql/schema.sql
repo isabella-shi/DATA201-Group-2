@@ -66,3 +66,6 @@ FOREIGN KEY (mcc) REFERENCES MerchantCategories (mcc_code),
 FOREIGN KEY (zip) REFERENCES ZipCodes (zip)
 );
 
+ALTER TABLE Cards MODIFY COLUMN card_number BIGINT;
+ALTER TABLE Cards MODIFY COLUMN credit_limit DECIMAL(15,2);
+
