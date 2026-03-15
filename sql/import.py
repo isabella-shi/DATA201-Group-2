@@ -1,6 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
-import getpass  
+import getpass
+import json  
 
 def login_db(user, host, port, db_name):
     print(f"Please enter the password for {user}@{host}:")
@@ -24,6 +25,18 @@ def import_csv_to_table(engine, file_path, table_name, money_cols=None):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+def import_json_to_table(engine, file_path, table_name):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        df = pd.DataFrame(list(data.items()), columns=['mcc_code', 'description'])
+        
+        df.to_sql(table_name, con=engine, if_exists='append', index=False)
+        print(f"Success! Imported {len(df)} categories into '{table_name}'.")
+    except Exception as e:
+        print(f"JSON Import Error: {e}")
+
 if __name__ == "__main__":
     # These settings may differ depending on your local 
     db_config = {
@@ -35,7 +48,11 @@ if __name__ == "__main__":
 
     engine = login_db(**db_config)
 
-    #Import Users table(NOTE: Update file_path before running)#
+    #Import Users table(NOTE: Update file_path before running)
     import_csv_to_table(engine, 'file_path', 'Users', ['per_capita_income', 'yearly_income', 'total_debt'])
-    #Import Cards table(NOTE: Update file_path before running)#
+
+    #Import Cards table(NOTE: Update file_path before running)
     import_csv_to_table(engine, 'file_path', 'Cards', ['credit_limit'])
+
+    #Import Users table(NOTE: Update file_path before running)
+    import_json_to_table(engine, 'file_path', 'MerchantCategories')
