@@ -26,7 +26,7 @@ id INT PRIMARY KEY,
 client_id INT,
 card_brand ENUM('Visa', 'Mastercard', 'Amex', 'Discover'),
 card_type ENUM('Credit', 'Debit', 'Debit (Prepaid)'),
-card_number INT,
+card_number BIGINT,
 expires CHAR(7),
 cvv INT,
 has_chip ENUM('YES', 'NO'),
@@ -34,7 +34,7 @@ num_cards_issued INT,
 credit_limit INT,
 acct_open_date CHAR(7),
 year_pin_last_changed YEAR,
-card_on_dark_web ENUM('YES', 'NO'), -- needs to be cleaned so data is all UPPERCASE
+card_on_dark_web ENUM('Yes', 'No'), -- needs to be cleaned so data is all UPPERCASE
 FOREIGN KEY (client_id) REFERENCES Users (id)
 );
 
@@ -44,7 +44,7 @@ description VARCHAR(100)
 );
 
 CREATE TABLE ZipCodes (
-zip CHAR(5) PRIMARY KEY,
+zip VARCHAR(5) PRIMARY KEY,
 city VARCHAR(100),
 state CHAR(2)
 );
@@ -66,3 +66,78 @@ FOREIGN KEY (mcc) REFERENCES MerchantCategories (mcc_code),
 FOREIGN KEY (zip) REFERENCES ZipCodes (zip)
 );
 
+SET GLOBAL local_infile = 1;
+
+LOAD DATA LOCAL INFILE './users_data.csv'
+INTO TABLE Users
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(id, current_age, retirement_age, birth_year, birth_month, gender, address, latitude, longitude,
+ @per_capita_income, @yearly_income, @total_debt, credit_score, num_credit_cards)
+SET
+    per_capita_income = REPLACE(@per_capita_income, '$', ''),
+    yearly_income = REPLACE(@yearly_income, '$', ''),
+    total_debt = REPLACE(@total_debt, '$', '');
+
+LOAD DATA LOCAL INFILE './cards_data.csv'
+INTO TABLE Cards
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS
+(id, client_id, card_brand, card_type, card_number, expires, cvv, has_chip, num_cards_issued,
+@credit_limit, acct_open_date, year_pin_last_changed, card_on_dark_web)
+SET
+    credit_limit = REPLACE(@credit_limit, '$', '');
+    
+LOAD DATA LOCAL INFILE './mcc_codes.csv'
+INTO TABLE MerchantCategories
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS
+(mcc_code, description);
+
+CREATE TEMPORARY TABLE TempZips (
+zip VARCHAR(5),
+city VARCHAR(100),
+state CHAR(2)
+);
+
+LOAD DATA LOCAL INFILE './transactions_data.csv'
+INTO TABLE TempZips
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(@id, @date, @client_id, @card_id, @amount, @use_chip,
+ @merchant_id, city, state, zip, @mcc, @errors);
+
+-- Insert only distinct, valid zip rows
+INSERT IGNORE INTO ZipCodes (zip, city, state)
+SELECT DISTINCT zip, city, state
+FROM TempZips
+WHERE zip IS NOT NULL 
+  AND TRIM(zip) != '';
+
+DROP TEMPORARY TABLE TempZips;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+LOAD DATA LOCAL INFILE './transactions_data.csv'
+INTO TABLE Transactions
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(id, date, client_id, card_id, @amount, use_chip,
+ merchant_id, @merchant_city, @merchant_state, zip, mcc, @errors)
+SET
+    amount = CASE
+                 WHEN TRIM(@amount) LIKE '($%)'
+                 THEN -CAST(REPLACE(REPLACE(REPLACE(TRIM(@amount), '($', ''), ')', ''), '$', '') AS DECIMAL(12,2))
+                 ELSE CAST(REPLACE(TRIM(@amount), '$', '') AS DECIMAL(12,2))
+             END,
+    errors = NULLIF(TRIM(@errors), '');
