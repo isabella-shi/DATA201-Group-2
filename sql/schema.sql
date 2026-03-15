@@ -44,7 +44,7 @@ description VARCHAR(100)
 );
 
 CREATE TABLE ZipCodes (
-zip VARCHAR(5) PRIMARY KEY,
+zip CHAR(5) PRIMARY KEY,
 city VARCHAR(100),
 state CHAR(2)
 );
@@ -113,7 +113,15 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
 (@id, @date, @client_id, @card_id, @amount, @use_chip,
- @merchant_id, city, state, zip, @mcc, @errors);
+ @merchant_id, city, state, zip, @mcc, @errors)
+SET
+    zip = CASE
+              WHEN @zip LIKE '%-%'
+              THEN LEFT(TRIM(@zip), 5)
+              WHEN @zip LIKE '%.'
+              THEN LPAD(REPLACE(TRIM(@zip), '.', ''), 5, '0')
+              ELSE TRIM(@zip)
+          END;
 
 -- Insert only distinct, valid zip rows
 INSERT IGNORE INTO ZipCodes (zip, city, state)
@@ -139,6 +147,13 @@ SET
                  WHEN TRIM(@amount) LIKE '($%)'
                  THEN -CAST(REPLACE(REPLACE(REPLACE(TRIM(@amount), '($', ''), ')', ''), '$', '') AS DECIMAL(12,2))
                  ELSE CAST(REPLACE(TRIM(@amount), '$', '') AS DECIMAL(12,2))
+             END,
+	zip    = CASE
+                 WHEN @zip LIKE '%-%'
+                 THEN LEFT(TRIM(@zip), 5)
+                 WHEN @zip LIKE '%.'
+                 THEN LPAD(REPLACE(TRIM(@zip), '.', ''), 5, '0')
+                 ELSE TRIM(@zip)
              END,
     errors = NULLIF(TRIM(@errors), '');
 
