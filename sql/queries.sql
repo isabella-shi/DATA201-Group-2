@@ -11,3 +11,23 @@ SELECT
 FROM Users
 GROUP BY age_group
 ORDER BY MIN(age_group);
+
+-- Average income and debt by gender
+SELECT gender, ROUND(AVG(yearly_income),2) AS avg_income, ROUND(AVG(total_debt),2) AS avg_debt
+FROM Users
+GROUP BY gender;
+
+-- Average debt for users above and below average credit score
+SELECT 'Above average credit score' AS credit_score_group, ROUND(AVG(total_debt),2) AS avg_debt, ROUND(AVG(credit_score)) AS avg_credit_score
+FROM Users
+WHERE credit_score > (
+	SELECT AVG(credit_score)
+    FROM Users
+)
+UNION
+SELECT 'Below average credit score' AS credit_score_group, ROUND(AVG(total_debt),2) AS avg_debt, ROUND(AVG(credit_score)) AS avg_credit_score
+FROM Users
+WHERE credit_score < (
+	SELECT AVG(credit_score)
+    FROM Users
+);
