@@ -141,3 +141,5 @@ SET
                  ELSE CAST(REPLACE(TRIM(@amount), '$', '') AS DECIMAL(12,2))
              END,
     errors = NULLIF(TRIM(@errors), '');
+
+SET FOREIGN_KEY_CHECKS = 1;
