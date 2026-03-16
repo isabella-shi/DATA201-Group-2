@@ -31,3 +31,10 @@ WHERE credit_score < (
 	SELECT AVG(credit_score)
     FROM Users
 );
+
+-- Top 10 users ranked by their total debt relative to their yearly income.
+SELECT id, gender, yearly_income, total_debt,(total_debt / yearly_income) AS debt_to_income_ratio
+FROM Users
+WHERE yearly_income > 0
+ORDER BY debt_to_income_ratio DESC
+LIMIT 10;
