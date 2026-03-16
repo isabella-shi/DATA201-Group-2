@@ -38,3 +38,22 @@ FROM Users
 WHERE yearly_income > 0
 ORDER BY debt_to_income_ratio DESC
 LIMIT 10;
+
+-- Average credit limit by card brand.
+SELECT card_brand, COUNT(*) AS total_cards, AVG(credit_limit) AS avg_limit
+FROM Cards
+GROUP BY card_brand;
+
+-- Detect potential fraud through geographical anomalies.
+WITH UserAvgSpending AS (
+    SELECT client_id, AVG(amount) * 5 AS threshold
+    FROM Transactions
+    GROUP BY client_id
+)
+SELECT t.id AS trans_id, t.client_id, t.amount, t.date, z.city, z.state
+FROM Transactions t
+INNER JOIN ZipCodes z ON t.zip = z.zip
+INNER JOIN UserAvgSpending uas ON t.client_id = uas.client_id
+WHERE t.amount > uas.threshold
+ORDER BY t.amount DESC 
+LIMIT 500;
