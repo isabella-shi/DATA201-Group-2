@@ -122,3 +122,5 @@ FROM weekly_counts wc
 CROSS JOIN stats s
 WHERE wc.weekly_transactions > s.mean + (2.5 * s.std_dev)
 ORDER BY wc.week_start DESC, wc.weekly_transactions DESC; 
+
+-- Rachel's Query 
