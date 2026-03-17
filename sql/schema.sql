@@ -138,15 +138,15 @@ FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
-(id, date, card_id, @amount, use_chip,
- merchant_id, @merchant_city, @merchant_state, zip, mcc, @errors)
+(id, date, @client_id, card_id, @amount, use_chip,
+ merchant_id, @merchant_city, @merchant_state, @zip, mcc, @errors)
 SET
     amount = CASE
                  WHEN TRIM(@amount) LIKE '($%)'
                  THEN -CAST(REPLACE(REPLACE(REPLACE(TRIM(@amount), '($', ''), ')', ''), '$', '') AS DECIMAL(12,2))
                  ELSE CAST(REPLACE(TRIM(@amount), '$', '') AS DECIMAL(12,2))
              END,
-	zip    = CASE
+    zip    = CASE
                  WHEN @zip LIKE '%-%'
                  THEN LEFT(TRIM(@zip), 5)
                  WHEN @zip LIKE '%.'
