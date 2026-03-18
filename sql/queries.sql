@@ -46,16 +46,18 @@ GROUP BY card_brand;
 
 -- Detect potential fraud through geographical anomalies.
 WITH UserAvgSpending AS (
-    SELECT client_id, AVG(amount) * 5 AS threshold
-    FROM Transactions
-    GROUP BY client_id
+    SELECT c.client_id, AVG(t.amount) * 5 AS threshold
+    FROM Transactions t
+    JOIN Cards c ON c.id = t.card_id
+    GROUP BY c.client_id
 )
-SELECT t.id AS trans_id, t.client_id, t.amount, t.date, z.city, z.state
+SELECT t.id AS trans_id, c.client_id, t.amount, t.date, z.city, z.state
 FROM Transactions t
-INNER JOIN ZipCodes z ON t.zip = z.zip
-INNER JOIN UserAvgSpending uas ON t.client_id = uas.client_id
+JOIN Cards c ON c.id = t.card_id
+JOIN ZipCodes z ON t.zip = z.zip
+JOIN UserAvgSpending uas ON c.client_id = uas.client_id
 WHERE t.amount > uas.threshold
-ORDER BY t.amount DESC 
+ORDER BY t.amount DESC
 LIMIT 500;
 
 
