@@ -123,4 +123,55 @@ CROSS JOIN stats s
 WHERE wc.weekly_transactions > s.mean + (2.5 * s.std_dev)
 ORDER BY wc.week_start DESC, wc.weekly_transactions DESC; 
 
--- Rachel's Query 
+-- Average transaction amount by card brand 
+SELECT
+    c.card_brand,
+    COUNT(t.id) AS total_transactions,
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
+FROM Transactions t
+JOIN Cards c
+    ON t.card_id = c.id
+GROUP BY c.card_brand
+ORDER BY avg_transaction_amount DESC;
+
+-- Total spending and transaction count by gender 
+SELECT
+    u.gender,
+    COUNT(t.id) AS total_transactions,
+    ROUND(SUM(t.amount), 2) AS total_spending,
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
+FROM Users u
+JOIN Cards c
+    ON u.id = c.client_id
+JOIN Transactions t
+    ON c.id = t.card_id
+GROUP BY u.gender
+ORDER BY total_spending DESC;
+
+-- Users whose spending is unusually high compared to their own average
+WITH UserAvgSpend AS (
+    SELECT
+        c.client_id,
+        AVG(t.amount) AS avg_user_amount
+    FROM Transactions t
+    JOIN Cards c
+        ON t.card_id = c.id
+    GROUP BY c.client_id
+)
+SELECT
+    c.client_id,
+    u.gender,
+    COUNT(t.id) AS unusually_high_transactions,
+    ROUND(AVG(t.amount), 2) AS avg_high_transaction,
+    ROUND(ua.avg_user_amount, 2) AS user_normal_avg
+FROM Transactions t
+JOIN Cards c
+    ON t.card_id = c.id
+JOIN UserAvgSpend ua
+    ON c.client_id = ua.client_id
+JOIN Users u
+    ON c.client_id = u.id
+WHERE t.amount > ua.avg_user_amount * 2
+GROUP BY c.client_id, u.gender, ua.avg_user_amount
+ORDER BY unusually_high_transactions DESC, avg_high_transaction DESC
+LIMIT 10;
