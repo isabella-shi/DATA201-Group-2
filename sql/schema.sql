@@ -66,7 +66,7 @@ FOREIGN KEY (zip) REFERENCES ZipCodes (zip)
 
 SET GLOBAL local_infile = 1;
 
-LOAD DATA LOCAL INFILE '/Users/isabellashi/Library/CloudStorage/OneDrive-Personal/SJSU/Spring 2026/DATA 201/Group Project/users_data.csv'
+LOAD DATA LOCAL INFILE './users_data.csv'
 INTO TABLE Users
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
@@ -79,7 +79,7 @@ SET
     yearly_income = REPLACE(@yearly_income, '$', ''),
     total_debt = REPLACE(@total_debt, '$', '');
 
-LOAD DATA LOCAL INFILE '/Users/isabellashi/Library/CloudStorage/OneDrive-Personal/SJSU/Spring 2026/DATA 201/Group Project/cards_data.csv'
+LOAD DATA LOCAL INFILE './cards_data.csv'
 INTO TABLE Cards
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
@@ -90,7 +90,7 @@ IGNORE 1 ROWS
 SET
     credit_limit = REPLACE(@credit_limit, '$', '');
     
-LOAD DATA LOCAL INFILE '/Users/isabellashi/Library/CloudStorage/OneDrive-Personal/SJSU/Spring 2026/DATA 201/Group Project/mcc_codes.csv'
+LOAD DATA LOCAL INFILE './mcc_codes.csv'
 INTO TABLE MerchantCategories
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
@@ -104,7 +104,7 @@ city VARCHAR(100),
 state CHAR(2)
 );
 
-LOAD DATA LOCAL INFILE '/Users/isabellashi/Library/CloudStorage/OneDrive-Personal/SJSU/Spring 2026/DATA 201/Group Project/transactions_data.csv'
+LOAD DATA LOCAL INFILE './transactions_data.csv'
 INTO TABLE TempZips
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
@@ -132,7 +132,7 @@ DROP TEMPORARY TABLE TempZips;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
-LOAD DATA LOCAL INFILE '/Users/isabellashi/Library/CloudStorage/OneDrive-Personal/SJSU/Spring 2026/DATA 201/Group Project/transactions_data.csv'
+LOAD DATA LOCAL INFILE './transactions_data.csv'
 INTO TABLE Transactions
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
