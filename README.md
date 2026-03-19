@@ -20,7 +20,7 @@ For 3NF, we identified two transitive dependencies. In Transactions, zip determi
 
 UserLocations ((latitude, longitude) PK, address)
 
-Users (id PK, current_age, retirement_age, birth_year, birth_month, gender, address, latitude, longitude, per_capita_income, yearly_income, total_debt, credit_score, num_credit_cards)
+Users (id PK, current_age, retirement_age, birth_year, birth_month, gender, address, address FK REFERENCES UserLocations, latitude, longitude, per_capita_income, yearly_income, total_debt, credit_score, num_credit_cards)
 
 Cards (id PK, client_id FK REFERENCES Users, card_brand, card_type, card_number, expires, cvv, has_chip, num_cards_issued, credit_limit, acct_open_date, year_pin_last_changed, card_on_dark_web)
 
