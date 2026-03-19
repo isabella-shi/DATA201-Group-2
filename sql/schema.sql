@@ -4,6 +4,13 @@
 CREATE DATABASE FinancialTransactions;
 USE FinancialTransactions;
 
+CREATE TABLE UserLocations (
+    latitude DECIMAL(9 , 6 ),
+    longitude DECIMAL(9 , 6 ),
+    address VARCHAR(300),
+    PRIMARY KEY (latitude, longitude)
+);
+
 CREATE TABLE Users (
     id INT PRIMARY KEY,
     current_age INT,
@@ -11,14 +18,14 @@ CREATE TABLE Users (
     birth_year INT,
     birth_month INT,
     gender VARCHAR(10),
-    address VARCHAR(300),
     latitude DECIMAL(9 , 6 ),
     longitude DECIMAL(9 , 6 ),
     per_capita_income DECIMAL(12 , 2 ),
     yearly_income DECIMAL(12 , 2 ),
     total_debt DECIMAL(12 , 2 ),
     credit_score INT,
-    num_credit_cards INT
+    num_credit_cards INT,
+    FOREIGN KEY (latitude, longitude) REFERENCES UserLocations (latitude, longitude)
 );
 
 CREATE TABLE Cards (
@@ -78,13 +85,35 @@ CREATE TABLE TransactionErrors (
 
 SET GLOBAL local_infile = 1;
 
+CREATE TEMPORARY TABLE TempUserLocations (
+    latitude  DECIMAL(9,6),
+    longitude DECIMAL(9,6),
+    address   VARCHAR(300)
+);
+
+LOAD DATA LOCAL INFILE './users_data.csv'
+INTO TABLE TempUserLocations
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(@id, @current_age, @retirement_age, @birth_year, @birth_month, @gender, 
+ address, latitude, longitude, @per_capita_income, @yearly_income, @total_debt, 
+ @credit_score, @num_credit_cards);
+
+INSERT IGNORE INTO UserLocations (latitude, longitude, address)
+SELECT DISTINCT latitude, longitude, address
+FROM TempUserLocations;
+
+DROP TEMPORARY TABLE TempUserLocations;
+
 LOAD DATA LOCAL INFILE './users_data.csv'
 INTO TABLE Users
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
-(id, current_age, retirement_age, birth_year, birth_month, gender, address, latitude, longitude,
+(id, current_age, retirement_age, birth_year, birth_month, gender, @address, latitude, longitude,
  @per_capita_income, @yearly_income, @total_debt, credit_score, num_credit_cards)
 SET
     per_capita_income = REPLACE(@per_capita_income, '$', ''),
