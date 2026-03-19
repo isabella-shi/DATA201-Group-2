@@ -122,7 +122,7 @@ FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
-(@id, @date, @card_id, @amount, @use_chip,
+(@id, @date, @client_id, @card_id, @amount, @use_chip,
  @merchant_id, city, state, @zip, @mcc, @errors)
 SET
     zip = CASE
