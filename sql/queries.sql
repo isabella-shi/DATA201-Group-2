@@ -1,5 +1,9 @@
 USE FinancialTransactions;
 
+-- =====================
+-- Isabella's Queries
+-- =====================
+
 -- Average credit score by age group
 SELECT
 	CASE
@@ -32,6 +36,59 @@ WHERE credit_score < (
     FROM Users
 );
 
+CREATE TABLE Transactions_Sample2 AS
+SELECT * FROM Transactions
+WHERE (id % 133) = 0
+LIMIT 100000;
+
+-- Rank users by total spending within each age group
+SELECT u.id,
+	CASE
+		WHEN u.current_age BETWEEN 18 AND 25 THEN '18-25'
+		WHEN u.current_age BETWEEN 26 AND 39 THEN '26-39'
+		WHEN u.current_age BETWEEN 40 AND 59 THEN '40-59'
+		ELSE '60+'
+	END AS age_group,
+	ROUND(SUM(t.amount), 2) AS total_spending,
+    RANK() OVER (
+		PARTITION BY
+			CASE
+				WHEN u.current_age BETWEEN 18 AND 25 THEN '18-25'
+				WHEN u.current_age BETWEEN 26 AND 39 THEN '26-39'
+				WHEN u.current_age BETWEEN 40 AND 59 THEN '40-59'
+				ELSE '60+'
+			END
+		ORDER BY SUM(t.amount) DESC
+	) AS spending_rank
+FROM Users u
+JOIN Cards c ON u.id = c.client_id
+JOIN Transactions_Sample2 t ON c.id = t.card_id
+GROUP BY u.id, u.current_age
+ORDER BY age_group, spending_rank;
+
+-- User spending summary view
+CREATE VIEW UserSpendingSummary AS
+SELECT u.id, u.gender, u.current_age, u.credit_score, COUNT(t.id) AS total_transactions, ROUND(SUM(t.amount), 2) AS total_spent
+FROM Users u
+JOIN Cards c ON u.id = c.client_id
+JOIN Transactions_Sample2 t ON c.id = t.card_id
+GROUP BY u.id, u.gender, u.current_age, u.credit_score;
+
+-- Users with risky financial profile: high debt and low credit score
+WITH AvgMetrics AS (
+	SELECT AVG(total_debt) AS avg_debt, AVG(credit_score) AS avg_score
+    FROM Users
+)
+SELECT u.id, u.total_debt, u.credit_score, u.yearly_income
+FROM Users u, AvgMetrics a
+WHERE u.total_debt > a.avg_debt AND u.credit_score < a.avg_score
+ORDER BY u.total_debt DESC;
+
+
+-- =====================
+-- Rene's Queries
+-- =====================
+
 -- Top 10 users ranked by their total debt relative to their yearly income.
 SELECT id, gender, yearly_income, total_debt,(total_debt / yearly_income) AS debt_to_income_ratio
 FROM Users
@@ -61,7 +118,11 @@ ORDER BY t.amount DESC
 LIMIT 500;
 
 
---Basic - Top 10 zipcode with the highest total Transaction amount in CA sorted from largest to smallest
+-- =====================
+-- Jessica's Queries
+-- =====================
+
+-- Basic - Top 10 zipcode with the highest total Transaction amount in CA sorted from largest to smallest
 CREATE TABLE Transactions_Sample AS
 SELECT * FROM Transactions
 LIMIT 100000;
@@ -75,7 +136,7 @@ GROUP BY z.merchant_state, z.merchant_city, z.zip
 ORDER BY SUM(t.amount) DESC
 LIMIT 10;
 
---Basic 2 - Show Average transaction and Total transaction amount by age bracket in CA
+-- Basic 2 - Show Average transaction and Total transaction amount by age bracket in CA
 SELECT 
     CASE 
         WHEN u.current_age BETWEEN 18 AND 24 THEN '18–24'
@@ -95,7 +156,7 @@ INNER JOIN (
 GROUP BY `Age Bracket`
 ORDER BY `Age Bracket`;
 
---Advanced - Flag cards with high # of transactions (outliers) within a short time window (1 week)
+-- Advanced - Flag cards with high # of transactions (outliers) within a short time window (1 week)
 WITH weekly_counts AS (
     -- get transaction count per customer per week
     SELECT 
@@ -124,6 +185,11 @@ FROM weekly_counts wc
 CROSS JOIN stats s
 WHERE wc.weekly_transactions > s.mean + (2.5 * s.std_dev)
 ORDER BY wc.week_start DESC, wc.weekly_transactions DESC; 
+
+
+-- =====================
+-- Rachel's Queries
+-- =====================
 
 -- Average transaction amount by card brand 
 SELECT
