@@ -192,11 +192,11 @@ ORDER BY wc.week_start DESC, wc.weekly_transactions DESC;
 -- =====================
 
 -- Average transaction amount by card brand 
-SELECT
+SELECT 
     c.card_brand,
     COUNT(t.id) AS total_transactions,
-    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
-FROM Transactions t
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount 
+FROM Transactions_Sample t
 JOIN Cards c
     ON t.card_id = c.id
 GROUP BY c.card_brand
@@ -211,17 +211,18 @@ SELECT
 FROM Users u
 JOIN Cards c
     ON u.id = c.client_id
-JOIN Transactions t
+JOIN Transactions_Sample t
     ON c.id = t.card_id
 GROUP BY u.gender
 ORDER BY total_spending DESC;
 
+# Advanced Queries 
 -- Users whose spending is unusually high compared to their own average
 WITH UserAvgSpend AS (
     SELECT
         c.client_id,
         AVG(t.amount) AS avg_user_amount
-    FROM Transactions t
+    FROM Transactions_Sample t
     JOIN Cards c
         ON t.card_id = c.id
     GROUP BY c.client_id
@@ -232,7 +233,7 @@ SELECT
     COUNT(t.id) AS unusually_high_transactions,
     ROUND(AVG(t.amount), 2) AS avg_high_transaction,
     ROUND(ua.avg_user_amount, 2) AS user_normal_avg
-FROM Transactions t
+FROM Transactions_Sample t
 JOIN Cards c
     ON t.card_id = c.id
 JOIN UserAvgSpend ua
@@ -240,6 +241,136 @@ JOIN UserAvgSpend ua
 JOIN Users u
     ON c.client_id = u.id
 WHERE t.amount > ua.avg_user_amount * 2
-GROUP BY c.client_id, u.gender, ua.avg_user_amount
-ORDER BY unusually_high_transactions DESC, avg_high_transaction DESC
+GROUP BY
+    c.client_id,
+    u.gender,
+    ua.avg_user_amount
+ORDER BY
+    unusually_high_transactions DESC,
+    avg_high_transaction DESC
 LIMIT 10;
+
+-- Rank card brands by total spending 
+SELECT 
+    card_brand,
+    total_transactions, 
+    total_spending, 
+    RANK() OVER (ORDER BY total_spending DESC) AS spending_rank
+FROM (
+    SELECT 
+        c.card_brand, 
+        COUNT(t.id) AS total_transactions,
+        ROUND(SUM(t.amount), 2) AS total_spending
+	FROM Transactions_Sample t 
+    JOIN Cards c
+        ON t.card_id = c.id
+	GROUP BY c.card_brand
+) brand_summary
+ORDER BY spending_rank; 
+
+-- Transaction size tier by card type 
+SELECT 
+    c.card_type, 
+    CASE 
+        WHEN t.amount >= 500 THEN 'High Value' 
+        WHEN t.amount >= 100 THEN 'Medium Value' 
+        ELSE 'Low Value'
+	END AS transaction_tier,
+    COUNT(t.id) AS total_transactions,
+    ROUND(SUM(t.amount), 2) AS total_spending,
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
+FROM Transactions_Sample t 
+JOIN Cards c
+    ON t.card_id = c.id
+GROUP BY c.card_type, transaction_tier 
+ORDER BY c.card_type, total_spending DESC; 
+
+-- Top 3 merchant categories within each card brand 
+SELECT
+    card_brand,
+    merchant_category,
+    total_transactions,
+    total_spending,
+    category_rank
+FROM (
+    SELECT
+        c.card_brand,
+        mc.description AS merchant_category,
+        COUNT(t.id) AS total_transactions,
+        ROUND(SUM(t.amount), 2) AS total_spending,
+        ROW_NUMBER() OVER (
+            PARTITION BY c.card_brand
+            ORDER BY SUM(t.amount) DESC
+        ) AS category_rank
+    FROM Transactions_Sample t
+    JOIN Cards c
+        ON t.card_id = c.id
+    JOIN MerchantCategories mc
+        ON t.mcc = mc.mcc_code
+    GROUP BY
+        c.card_brand,
+        mc.description
+) ranked_categories
+WHERE category_rank <= 3
+ORDER BY
+    card_brand,
+    category_rank;
+
+-- Spending by card brand for transactions over $100 
+SELECT
+    c.card_brand,
+    COUNT(t.id) AS total_transactions,
+    ROUND(SUM(t.amount), 2) AS total_spending,
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
+FROM Transactions_Sample t
+JOIN Cards c
+    ON t.card_id = c.id
+WHERE t.amount >= 100
+GROUP BY c.card_brand
+ORDER BY total_spending DESC;
+
+-- EXPLAIN before index 
+EXPLAIN
+SELECT
+    c.card_brand,
+    COUNT(t.id) AS total_transactions,
+    ROUND(SUM(t.amount), 2) AS total_spending,
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
+FROM Transactions_Sample t
+JOIN Cards c
+    ON t.card_id = c.id
+WHERE t.amount >= 100
+GROUP BY c.card_brand
+ORDER BY total_spending DESC;
+
+-- EXPLAIN ANALYZE before index 
+EXPLAIN ANALYZE
+SELECT
+    c.card_brand,
+    COUNT(t.id) AS total_transactions,
+    ROUND(SUM(t.amount), 2) AS total_spending,
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
+FROM Transactions_Sample t
+JOIN Cards c
+    ON t.card_id = c.id
+WHERE t.amount >= 100
+GROUP BY c.card_brand
+ORDER BY total_spending DESC;
+
+CREATE INDEX idx_sample_card_amount
+ON Transactions_Sample(card_id, amount);
+
+-- EXPLAIN ANALYZE after index 
+EXPLAIN ANALYZE
+SELECT
+    c.card_brand,
+    COUNT(t.id) AS total_transactions,
+    ROUND(SUM(t.amount), 2) AS total_spending,
+    ROUND(AVG(t.amount), 2) AS avg_transaction_amount
+FROM Transactions_Sample t
+JOIN Cards c
+    ON t.card_id = c.id
+WHERE t.amount >= 100
+GROUP BY c.card_brand
+ORDER BY total_spending DESC;
+
