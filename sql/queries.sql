@@ -84,6 +84,14 @@ FROM Users u, AvgMetrics a
 WHERE u.total_debt > a.avg_debt AND u.credit_score < a.avg_score
 ORDER BY u.total_debt DESC;
 
+-- Index on date in Transactions to speed up time-based queries
+CREATE INDEX idx_transaction_date ON Transactions(date);
+
+EXPLAIN ANALYZE SELECT id, amount, date
+FROM Transactions
+WHERE date BETWEEN '2018-07-12 00:00:00' AND '2018-07-12 23:59:59'
+ORDER BY date;
+
 
 -- =====================
 -- Rene's Queries
