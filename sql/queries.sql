@@ -1,5 +1,11 @@
 USE FinancialTransactions;
 
+-- Creating a sample of 100,000 rows from Transactions
+CREATE TABLE Transactions_Sample AS
+SELECT * FROM Transactions
+WHERE (id % 133) = 0
+LIMIT 100000;
+
 -- =====================
 -- Isabella's Queries
 -- =====================
@@ -35,11 +41,6 @@ WHERE credit_score < (
 	SELECT AVG(credit_score)
     FROM Users
 );
-
-CREATE TABLE Transactions_Sample2 AS
-SELECT * FROM Transactions
-WHERE (id % 133) = 0
-LIMIT 100000;
 
 -- Rank users by total spending within each age group
 SELECT u.id,
@@ -131,9 +132,6 @@ LIMIT 500;
 -- =====================
 
 -- Basic - Top 10 zipcode with the highest total Transaction amount in CA sorted from largest to smallest
-CREATE TABLE Transactions_Sample AS
-SELECT * FROM Transactions
-LIMIT 100000;
 
 SELECT z.merchant_city, z.zip, CONCAT('$', FORMAT(SUM(t.amount), 2)) as `Total Amount`
 FROM ZipCodes z
