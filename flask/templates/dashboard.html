@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Financial Transactions Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Financial Transactions Dashboard</h1>
+  
+  <!-- ======================================= -->
+  <!-- Chart 1: Avg Income and Debt by Gender  -->
+  <!-- ======================================= -->
+  <h2>Average Income and Debt by Gender</h2>
+  <canvas id="chart1" width="400" height="200"></canvas>
+  <script>
+    const labels1 = {{ data1 | map(attribute='gender') | list | tojson }};
+    const income1 = {{ data1 | map(attribute='avg_income') | list | tojson }};
+    const debt1   = {{ data1 | map(attribute='avg_debt') | list | tojson }};
+
+    new Chart(document.getElementById('chart1'), {
+      type: 'bar',
+      data: {
+        labels: labels1,
+        datasets: [
+          { label: 'Avg Income', data: income1, backgroundColor: 'rgba(75, 192, 75, 0.6)' },
+          { label: 'Avg Debt',   data: debt1,   backgroundColor: 'rgba(255, 125, 125, 0.8)' }
+        ] 
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  </script>
+
+  <h2>Average Debt by Credit Score Group</h2>
+  <canvas id="chart2" width="400" height="200"></canvas>
+
+  <!-- ======================================== -->
+  <!-- Chart 2: Avg Debt by Credit Score Group  -->
+  <!-- ======================================== -->
+  <script>
+    const labels2 = {{ data2 | map(attribute='credit_score_group') | list | tojson }};
+    const debt2   = {{ data2 | map(attribute='avg_debt') | list | tojson }};
+
+    const ctx = document.getElementById('chart2');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels2,
+        datasets: [
+          {
+            label: 'Avg Debt',
+            data: debt2,
+            backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)']
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
+
+  <!-- ======================================== -->
+  <!-- Chart 3:   -->
+  <!-- ======================================== -->
+
+</body>
+</html>
