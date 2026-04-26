@@ -63,9 +63,72 @@
     });
   </script>
 
-  <!-- ======================================== -->
-  <!-- Chart 3:   -->
-  <!-- ======================================== -->
+  <!-- ===================================== -->
+  <!-- Chart 3: Monthly Spending Trend       -->
+  <!-- ===================================== -->
+<h2>Monthly Spending Trend</h2>
+<canvas id="chart7" width="400" height="200"></canvas>
 
-</body>
-</html>
+<script>
+    const labels7 = {{ data7 | map(attribute='month') | list | tojson }};
+    const spending7 = {{ data7 | map(attribute='total_spending') | list | tojson }};
+
+    new Chart(document.getElementById('chart7'), {
+        type: 'line',
+        data: {
+            labels: labels7,
+            datasets: [
+                {
+                    label: 'Total Spending',
+                    data: spending7,
+                    borderColor: 'rgba(75, 192, 192, 0.8)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.3)',
+                    tension: 0.3,
+                    fill: false,
+                    pointRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+
+  <!-- ===================================== -->
+  <!-- Chart 3: Merchant Categories by Spending
+  <!-- ===================================== -->
+<h2>Top 10 Merchant Categories by Spending</h2>
+<canvas id="chart8" width="400" height="200"></canvas>
+
+<script>
+    const labels8 = {{ data8 | map(attribute='category') | list | tojson }};
+    const spending8 = {{ data8 | map(attribute='total_spending') | list | tojson }};
+
+    new Chart(document.getElementById('chart8'), {
+        type: 'bar',
+        data: {
+            labels: labels8,
+            datasets: [
+                {
+                    label: 'Total Spending',
+                    data: spending8,
+                    backgroundColor: 'rgba(255, 159, 64, 0.6)'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+
+
+
