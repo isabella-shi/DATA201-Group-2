@@ -1,5 +1,12 @@
 USE FinancialTransactions;
 
+CREATE USER IF NOT EXISTS 'flaskuser'@'localhost'
+  IDENTIFIED WITH caching_sha2_password BY 'flaskpass123!';
+
+GRANT ALL PRIVILEGES ON FinancialTransactions.* TO 'flaskuser'@'localhost';
+
+FLUSH PRIVILEGES;
+
 -- Creating a sample of 100,000 rows from Transactions
 CREATE TABLE Transactions_Sample AS
 SELECT * FROM Transactions
