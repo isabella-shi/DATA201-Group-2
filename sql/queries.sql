@@ -117,21 +117,114 @@ SELECT card_brand, COUNT(*) AS total_cards, AVG(credit_limit) AS avg_limit
 FROM Cards
 GROUP BY card_brand;
 
+-- Find high income with low debt users
+WITH AvgStats AS (
+    SELECT AVG(yearly_income) AS avg_income, 
+           AVG(total_debt) AS avg_debt
+    FROM Users
+)
+SELECT u.id, u.yearly_income, u.total_debt, u.credit_score
+FROM Users u, AvgStats a
+WHERE u.yearly_income > a.avg_income 
+  AND u.total_debt < a.avg_debt
+ORDER BY u.yearly_income DESC;
+
 -- Detect potential fraud through geographical anomalies.
 WITH UserAvgSpending AS (
     SELECT c.client_id, AVG(t.amount) * 5 AS threshold
-    FROM Transactions t
+    FROM Transactions_Sample t
     JOIN Cards c ON c.id = t.card_id
     GROUP BY c.client_id
 )
 SELECT t.id AS trans_id, c.client_id, t.amount, t.date, z.city, z.state
-FROM Transactions t
+FROM Transactions_Sample t
 JOIN Cards c ON c.id = t.card_id
 JOIN ZipCodes z ON t.zip = z.zip
 JOIN UserAvgSpending uas ON c.client_id = uas.client_id
 WHERE t.amount > uas.threshold
 ORDER BY t.amount DESC
-LIMIT 500;
+LIMIT 50;
+
+-- Identify transactions occurring within 60 minutes for potential fraud detection.
+CREATE OR REPLACE VIEW Rapid_Transaction_Alerts AS
+WITH TransactionIntervals AS (
+    SELECT 
+        card_id, 
+        date AS current_trans_time,
+        LAG(date) OVER (PARTITION BY card_id ORDER BY date) AS prev_trans_time
+    FROM Transactions_Sample
+)
+SELECT *
+FROM TransactionIntervals
+WHERE TIMESTAMPDIFF(MINUTE, prev_trans_time, current_trans_time) < 60;
+SELECT *
+FROM Rapid_Transaction_Alerts;
+
+-- Explain analyze before index
+EXPLAIN ANALYZE
+SELECT *
+FROM Rapid_Transaction_Alerts;
+
+-- Explain analyze after index
+CREATE INDEX idx_card_date ON Transactions_Sample(card_id, date);
+
+EXPLAIN ANALYZE
+SELECT *
+FROM Rapid_Transaction_Alerts;
+
+-- Correlating card holdings and credit scores to identify high-risk users.
+SELECT 
+    CASE 
+        WHEN card_count = 1 THEN 'Low Holdings'
+        WHEN card_count BETWEEN 2 AND 4 THEN 'Medium Holdings'
+        ELSE 'High Holdings'
+    END AS holding_tier,
+    CASE 
+        WHEN credit_score >= 750 THEN 'Excellent'
+        WHEN credit_score >= 650 THEN 'Good'
+        ELSE 'Fair/Poor'
+    END AS credit_tier,
+    COUNT(*) AS customer_count,
+    AVG(total_debt) AS avg_debt_level
+FROM (
+    SELECT u.id, u.credit_score, u.total_debt, COUNT(c.client_id) AS card_count
+    FROM Users u
+    LEFT JOIN Cards c ON u.id = c.client_id
+    GROUP BY u.id
+) AS UserStats
+GROUP BY holding_tier, credit_tier
+ORDER BY field(holding_tier, 'High Holdings', 'Medium Holdings', 'Low Holdings'), 
+         field(credit_tier, 'Excellent', 'Good', 'Fair/Poor');
+         
+-- Identify the top 10 highest-spending customers within each gender and age segment to find valuable users.
+      WITH UserSpending AS (
+    SELECT 
+        u.id AS user_id,
+        u.gender,
+        CASE 
+            WHEN u.current_age BETWEEN 18 AND 29 THEN '18-29'
+            WHEN u.current_age BETWEEN 30 AND 49 THEN '30-49'
+            ELSE '50+'
+        END AS age_group,
+        SUM(t.amount) AS total_spent
+    FROM Users u
+    JOIN Cards c ON u.id = c.client_id
+    JOIN Transactions_Sample t ON c.id = t.card_id
+    GROUP BY u.id, u.gender, age_group
+),
+RankedUsers AS (
+    SELECT *,
+        ROW_NUMBER() OVER (
+            PARTITION BY gender, age_group 
+            ORDER BY total_spent DESC
+        ) AS spending_rank
+    FROM UserSpending
+)
+SELECT *
+FROM RankedUsers
+WHERE spending_rank <= 10
+ORDER BY gender, age_group, spending_rank;   
+
 
 
 -- =====================
