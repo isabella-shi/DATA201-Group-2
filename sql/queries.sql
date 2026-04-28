@@ -292,6 +292,52 @@ CROSS JOIN stats s
 WHERE wc.weekly_transactions > s.mean + (2.5 * s.std_dev)
 ORDER BY wc.week_start DESC, wc.weekly_transactions DESC; 
 
+--Customer Spending Summary
+DELIMETER //
+CREATE PROCEDURE GetCustomerSpendingSummary
+	@ClientId INT,
+	@StartDate DATE,
+	@EndDate DATE
+AS
+BEGIN
+	SELECT 
+		COUNT(*) AS TotalTransaction,
+		SUM(amount) AS TotalSpending,
+		AVG(amount) AS AvgTransactionAmount,
+		MAX(mcc) WITHIN GROUP (ORDER BY COUNT(*) DESC) AS TopMCC
+	FROM Transactions
+	WHERE client_id = @ClientId
+		AND date BETWEEN @StartDate AND @EndDate;
+END//
+DELIMETER;
+
+-- Customer Lifetime Spending Value
+CREATE PROCEDURE GetCustomerLTV
+    @ClientId INT
+AS
+BEGIN
+    SELECT
+        SUM(amount) AS TotalSpend,
+        SUM(amount) / COUNT(DISTINCT FORMAT(date, 'yyyy-MM')) AS AvgMonthlySpend
+    FROM transactions
+    WHERE client_id = @ClientId;
+END;
+
+--Target Customer of > $1k spending View
+CREATE VIEW vw_customer_spend AS
+SELECT
+    client_id,
+    COUNT(*) AS total_transactions,
+    SUM(amount) AS total_spend,
+    AVG(amount) AS avg_transaction
+FROM transactions
+GROUP BY client_id;
+
+SELECT *
+FROM vw_customer_spend
+WHERE total_spend > 1000
+ORDER BY total_spend DESC;
+
 
 -- =====================
 -- Rachel's Queries
