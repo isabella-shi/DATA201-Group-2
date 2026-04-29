@@ -71,13 +71,13 @@ def index():
 
     sql7 = """
             SELECT 
-            DATE_FORMAT(`date`, '%Y-%m') AS month,
+            DATE_FORMAT(`date`, '%%Y-%%m') AS month,
             ROUND(SUM(ABS(CAST(REPLACE(REPLACE(amount, '$', ''), ',', '') AS DECIMAL(10,2)))), 2) AS total_spending
             FROM Transactions_Sample
             WHERE amount IS NOT NULL
               AND amount != ''
               AND `date` IS NOT NULL
-            GROUP BY DATE_FORMAT(`date`, '%Y-%m')
+            GROUP BY DATE_FORMAT(`date`, '%%Y-%%m')
             ORDER BY month;
     """
 
