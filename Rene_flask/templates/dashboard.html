@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Transactions Analysis Dashboard</title>
+    <style>
+        :root {
+            --primary-blue: #1a73e8;
+            --light-blue: #e8f0fe;
+            --bg-gray: #f1f3f4;
+            --text-dark: #3c4043;
+            --alert-red: #d93025;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-gray);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: white;
+            padding: 20px 40px;
+            border-bottom: 1px solid #dadce0;
+            box-shadow: 0 1px 2px rgba(60,64,67,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--primary-blue);
+        }
+
+        .container {
+            padding: 30px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(60,64,67,0.12), 0 1px 2px rgba(60,64,67,0.24);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 15px 20px;
+            background-color: #fafafa;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            color: var(--primary-blue);
+            display: flex;
+            align-items: center;
+        }
+
+        .card-content {
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            background-color: var(--light-blue);
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .badge-alert {
+            background-color: #fce8e6;
+            color: var(--alert-red);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #70757a;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Financial Transactions Dashboard</h1>
+    </header>
+
+    <div class="container">
+        
+        <div class="card">
+            <div class="card-header">
+                Potential Fraud Alerts (Transactions within 60 mins)
+            </div>
+            <div class="card-content">
+                {% if data3 %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Card ID</th>
+                            <th>Current Transaction</th>
+                            <th>Previous Transaction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data3 %}
+                        <tr>
+                            <td>{{ row.card_id }}</td>
+                            <td>{{ row.current_trans_time }}</td>
+                            <td><span class="badge-alert">{{ row.prev_trans_time }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">No fraudulent patterns detected at this time.</div>
+                {% endif %}
+            </div>
+        </div>
+
+     <div class="card">
+        <div class="card-header">Top 10 High-Spending Customers by Segment</div>
+        <div class="card-content">
+            {% if data4 %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>User ID</th>
+                        <th>Gender</th>
+                        <th>Age Group</th>
+                        <th>Total Spent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data4 %}
+                    <tr>
+                        <td><strong>#{{ row.spending_rank }}</strong></td>
+                        <td>{{ row.user_id }}</td>
+                        <td>{{ row.gender }}</td>
+                        <td>{{ row.age_group }}</td>
+                        <td style="color: #1a73e8; font-weight: bold;">
+                            ${{ "{:,.2f}".format(row.total_spent) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No data available.</p>
+            {% endif %}
+        </div>
+    </div>
+    </div>
+
+</body>
+</html>
