@@ -2,177 +2,144 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Transactions Analysis Dashboard</title>
+    <title>Financial Analysis Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --primary-blue: #1a73e8;
-            --light-blue: #e8f0fe;
-            --bg-gray: #f1f3f4;
-            --text-dark: #3c4043;
-            --alert-red: #d93025;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 40px; color: #1c1e21; }
+        .section-title { color: #1a73e8; margin: 40px 0 20px; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
+        
+        .data3-container { display: flex; gap: 30px; align-items: flex-start; margin-bottom: 40px; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .pie-box { flex: 1; max-width: 350px; }
+        .metrics-box { flex: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        
+        .summary-card { background: #f8f9fa; padding: 15px; border-radius: 12px; border-left: 5px solid #34495e; }
+        .summary-card h4 { margin: 0; color: #65676b; font-size: 0.8em; text-transform: uppercase; }
+        .summary-card .value { font-size: 1.4em; font-weight: bold; margin: 5px 0; }
 
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-gray);
-            color: var(--text-dark);
-            margin: 0;
-            padding: 0;
-        }
-
-        header {
-            background-color: white;
-            padding: 20px 40px;
-            border-bottom: 1px solid #dadce0;
-            box-shadow: 0 1px 2px rgba(60,64,67,0.1);
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 24px;
-            color: var(--primary-blue);
-        }
-
-        .container {
-            padding: 30px 40px;
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(60,64,67,0.12), 0 1px 2px rgba(60,64,67,0.24);
-            overflow: hidden;
-        }
-
-        .card-header {
-            padding: 15px 20px;
-            background-color: #fafafa;
-            border-bottom: 1px solid #eee;
-            font-weight: bold;
-            color: var(--primary-blue);
-            display: flex;
-            align-items: center;
-        }
-
-        .card-content {
-            padding: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        th {
-            text-align: left;
-            padding: 12px;
-            background-color: var(--light-blue);
-            color: var(--primary-blue);
-            font-weight: 600;
-        }
-
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #f1f3f4;
-        }
-
-        tr:hover {
-            background-color: #f8f9fa;
-        }
-
-        .badge-alert {
-            background-color: #fce8e6;
-            color: var(--alert-red);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #70757a;
-        }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 30px; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-top: 8px solid #1a73e8; }
+        .card.Female { border-top-color: #e91e63; }
+        .chart-box { height: 300px; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        th { text-align: left; padding: 10px; background: #f8f9fa; }
+        td { padding: 10px; border-bottom: 1px solid #f0f2f5; }
+        .amount { font-family: monospace; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>Financial Transactions Dashboard</h1>
-    </header>
-
-    <div class="container">
+    <h2 class="section-title">Card Brand Market Share</h2>
+    <div class="data3-container" style="display: flex; justify-content: center; align-items: center; background: white; padding: 30px; border-radius: 16px; gap: 50px;">
         
-        <div class="card">
-            <div class="card-header">
-                Potential Fraud Alerts (Transactions within 60 mins)
-            </div>
-            <div class="card-content">
-                {% if data3 %}
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Card ID</th>
-                            <th>Current Transaction</th>
-                            <th>Previous Transaction</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in data3 %}
-                        <tr>
-                            <td>{{ row.card_id }}</td>
-                            <td>{{ row.current_trans_time }}</td>
-                            <td><span class="badge-alert">{{ row.prev_trans_time }}</span></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="empty-state">No fraudulent patterns detected at this time.</div>
-                {% endif %}
-            </div>
+        <div style="flex: 1; max-width: 400px;">
+            <canvas id="pieChartData3"></canvas>
         </div>
-
-     <div class="card">
-        <div class="card-header">Top 10 High-Spending Customers by Segment</div>
-        <div class="card-content">
-            {% if data4 %}
-            <table>
+        
+        <div style="flex: 1;">
+            <table style="width: 100%; border-collapse: collapse;">
                 <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>User ID</th>
-                        <th>Gender</th>
-                        <th>Age Group</th>
-                        <th>Total Spent</th>
+                    <tr style="border-bottom: 2px solid #f0f2f5;">
+                        <th style="padding: 10px; text-align: left;">Card Brand</th>
+                        <th style="padding: 10px; text-align: right;">Total Cards</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in data4 %}
-                    <tr>
-                        <td><strong>#{{ row.spending_rank }}</strong></td>
-                        <td>{{ row.user_id }}</td>
-                        <td>{{ row.gender }}</td>
-                        <td>{{ row.age_group }}</td>
-                        <td style="color: #1a73e8; font-weight: bold;">
-                            ${{ "{:,.2f}".format(row.total_spent) }}
+                    {% for brand in data3 %}
+                    <tr style="border-bottom: 1px solid #f0f2f5;">
+                        <td style="padding: 12px; font-weight: 500;">{{ brand.card_brand }}</td>
+                        <td style="padding: 12px; text-align: right; color: #1a73e8; font-weight: bold;">
+                            {{ "{:,}".format(brand.total_cards) }}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            {% else %}
-            <p>No data available.</p>
-            {% endif %}
         </div>
     </div>
+
+    <h2 class="section-title">Top 10 Spenders Analysis</h2>
+    <div class="grid-container">
+        {% for gender, age_dict in spending_groups.items() %}
+            {% for age_group, users in age_dict.items() %}
+                <div class="card {{ gender }}">
+                    <h3>{{ gender }} | Age {{ age_group }}</h3>
+                    <div class="chart-box">
+                        <canvas id="chart-{{ gender }}-{{ age_group | replace('+', 'plus') | replace('-', '_') }}"></canvas>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th><th>User ID</th><th>Total Spent</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td><strong>#{{ u.spending_rank }}</strong></td>
+                                <td>ID: {{ u.user_id }}</td>
+                                <td class="amount">${{ "{:,.2f}".format(u.total_spent) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endfor %}
+        {% endfor %}
     </div>
 
+    <script>
+        const d3Raw = {{ data3 | tojson }};
+        new Chart(document.getElementById('pieChartData3'), {
+            type: 'pie',
+            data: {
+                labels: d3Raw.map(d => d.card_brand),
+                datasets: [{
+                    data: d3Raw.map(d => d.total_cards),
+                    backgroundColor: ['#34495e', '#3498db', '#e67e22', '#2ecc71', '#9b59b6', '#f1c40f'],
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: { display: true, text: 'Card Brand Distribution (Quantity)' }
+                }
+            }
+        });
+
+        const groups = {{ spending_groups | tojson }};
+        const maxVal = {{ chart_max }};
+
+        Object.keys(groups).forEach(gender => {
+            Object.keys(groups[gender]).forEach(ageGroup => {
+                const users = groups[gender][ageGroup];
+                if (users.length === 0) return;
+                const safeId = `chart-${gender}-${ageGroup.replace('+', 'plus').replace('-', '_')}`;
+                const ctx = document.getElementById(safeId).getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: users.map(u => `ID ${u.user_id}`),
+                        datasets: [{
+                            data: users.map(u => u.total_spent),
+                            backgroundColor: gender === 'Male' ? '#1a73e8' : '#e91e63',
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { beginAtZero: true, max: maxVal, ticks: { callback: (v) => '$' + v.toLocaleString() } },
+                            y: { grid: { display: false } }
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

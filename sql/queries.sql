@@ -128,8 +128,8 @@ WHERE yearly_income > 0
 ORDER BY debt_to_income_ratio DESC
 LIMIT 10;
 
--- Average credit limit by card brand.
-SELECT card_brand, COUNT(*) AS total_cards, AVG(credit_limit) AS avg_limit
+-- Card Brand Market Share
+SELECT card_brand, COUNT(*) AS total_cards
 FROM Cards
 GROUP BY card_brand;
 
