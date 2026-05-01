@@ -4,6 +4,112 @@
   <meta charset="UTF-8">
   <title>Financial Transactions Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  .ua-container {
+      font-family: 'Segoe UI', sans-serif;
+      color: #1c1e21;
+      padding: 20px;
+      background-color: #f0f2f5;
+      border-radius: 20px;
+  }
+
+  .ua-title {
+      color: #1a73e8;
+      margin: 40px 0 20px;
+      border-bottom: 2px solid #1a73e8;
+      padding-bottom: 10px;
+      font-size: 1.5em;
+  }
+
+  .ua-subtitle {
+      margin-bottom: 10px;
+      font-size: 1.2em;
+      color: #333;
+  }
+
+  .ua-card {
+      display: flex;
+      flex-direction: column;   
+      gap: 20px;
+
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  .ua-border-Male { border-top: 8px solid #1a73e8; }
+  .ua-border-Female { border-top: 8px solid #e91e63; }
+
+  .ua-card-content {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+  }
+
+  .ua-chart {
+      flex: 1;
+      min-width: 300px;
+      max-width: 400px;
+      height: 350px;
+  }
+
+  .ua-bar-chart {
+      flex: 1;
+      min-width: 300px;
+      height: 300px;
+  }
+
+  .ua-table-wrapper {
+      flex: 1;
+      min-width: 300px;
+  }
+
+  .ua-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 30px;
+  }
+
+  .ua-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+  }
+
+  .ua-table th {
+      padding: 12px;
+      text-align: left;
+      color: #65676b;
+      background: #f8f9fa;
+  }
+
+  .ua-table td {
+      padding: 12px;
+  }
+
+  .ua-table tr {
+      border-bottom: 1px solid #f0f2f5;
+  }
+
+  .ua-table.small {
+      font-size: 0.85em;
+  }
+
+  .right {
+      text-align: right;
+  }
+
+  .highlight {
+      color: #1a73e8;
+      font-weight: bold;
+  }
+
+  .mono {
+      font-family: monospace;
+  }
+  </style>
 </head>
 <body>
   <h1>Financial Transactions Dashboard</h1>
@@ -130,5 +236,170 @@
     });
 </script>
 
+  <!-- ===================================== -->
+  <!-- Chart 5: Card Brand Market Share
+  <!-- ===================================== -->
+  <h2 class="ua-title">Card Brand Market Share</h2>
+    
+    <div class="ua-card">
+        <div class="ua-card-content">
 
+            <div class="ua-chart">
+                <canvas id="pieChartData3"></canvas>
+            </div>
+            
+            <div class="ua-table-wrapper">
+                <table class="ua-table">
+                    <thead>
+                        <tr>
+                            <th>Card Brand</th>
+                            <th class="right">Total Cards</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for brand in data3 %}
+                        <tr>
+                            <td>{{ brand.card_brand }}</td>
+                            <td class="right highlight">
+                                {{ "{:,}".format(brand.total_cards) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        if (typeof Chart === 'undefined') return;
+
+        const d3Raw = {{ data3 | tojson | safe }};
+        const pieCtx = document.getElementById('pieChartData3');
+
+        if (pieCtx && d3Raw.length > 0) {
+            new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: d3Raw.map(d => d.card_brand),
+                    datasets: [{
+                        data: d3Raw.map(d => d.total_cards),
+                        backgroundColor: [
+                            '#34495e', '#3498db', '#e67e22',
+                            '#2ecc71', '#9b59b6', '#f1c40f'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    });
+    </script>
+  <!-- ===================================== -->
+  <!-- Chart 6: Top 10 Spenders Analysis
+  <!-- ===================================== -->
+  <h2 class="ua-title">Top 10 Spenders Analysis</h2>
+    
+    <div class="ua-grid">
+        {% for gender, age_dict in spending_groups.items() %}
+            {% for age_group, users in age_dict.items() %}
+                <div class="ua-card ua-border-{{ gender }}">
+                    
+                    <h3 class="ua-subtitle">
+                        {{ gender }} | Age {{ age_group }}
+                    </h3>
+
+                    <div class="ua-card-content">
+
+                        <div class="ua-bar-chart">
+                            <canvas id="chart-{{ gender }}-{{ age_group | replace('+', 'plus') | replace('-', '_') }}"></canvas>
+                        </div>
+
+                        <table class="ua-table small">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>User ID</th>
+                                    <th>Total Spent</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for u in users %}
+                                <tr>
+                                    <td><strong>#{{ u.spending_rank }}</strong></td>
+                                    <td>ID: {{ u.user_id }}</td>
+                                    <td class="mono highlight">
+                                        ${{ "{:,.2f}".format(u.total_spent) }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        if (typeof Chart === 'undefined') return;
+
+        const groups = {{ spending_groups | tojson | safe }};
+        const maxVal = {{ chart_max | tojson | safe }};
+
+        Object.keys(groups).forEach(gender => {
+            Object.keys(groups[gender]).forEach(ageGroup => {
+
+                const users = groups[gender][ageGroup];
+                if (!users || users.length === 0) return;
+
+                const safeId = `chart-${gender}-${ageGroup.replace('+','plus').replace('-','_')}`;
+                const canvas = document.getElementById(safeId);
+                if (!canvas) return;
+
+                new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: users.map(u => `ID ${u.user_id}`),
+                        datasets: [{
+                            data: users.map(u => u.total_spent),
+                            backgroundColor: gender === 'Male' ? '#1a73e8' : '#e91e63',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: maxVal,
+                                ticks: {
+                                    callback: v => '$' + v.toLocaleString()
+                                }
+                            },
+                            y: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+            });
+        });
+    });
+    </script>
+</body>
