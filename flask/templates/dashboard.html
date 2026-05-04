@@ -113,57 +113,77 @@
 </head>
 <body>
   <h1>Financial Transactions Dashboard</h1>
-  
-  <!-- ======================================= -->
-  <!-- Chart 1: Avg Income and Debt by Gender  -->
-  <!-- ======================================= -->
-  <h2>Average Income and Debt by Gender</h2>
+
+  <!-- ======================================== -->
+  <!-- Chart 1: Avg Debt by Credit Score Group  -->
+  <!-- ======================================== -->
+  <h2>Average Debt by Credit Score Group</h2>
   <canvas id="chart1" width="400" height="200"></canvas>
   <script>
-    const labels1 = {{ data1 | map(attribute='gender') | list | tojson }};
-    const income1 = {{ data1 | map(attribute='avg_income') | list | tojson }};
-    const debt1   = {{ data1 | map(attribute='avg_debt') | list | tojson }};
+    const labels1 = {{ data1 | map(attribute='credit_score_group') | list | tojson }};
+    const debt1 = {{ data1 | map(attribute='avg_debt') | list | tojson }};
 
     new Chart(document.getElementById('chart1'), {
-      type: 'bar',
+      type: 'doughnut',
       data: {
         labels: labels1,
-        datasets: [
-          { label: 'Avg Income', data: income1, backgroundColor: 'rgba(75, 192, 75, 0.6)' },
-          { label: 'Avg Debt',   data: debt1,   backgroundColor: 'rgba(255, 125, 125, 0.8)' }
-        ] 
+        datasets: [{
+          label: 'Avg Debt',
+          data: debt1,
+          backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)']
+        }]
       },
-      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      options: { responsive: true }
     });
   </script>
 
-  <h2>Average Debt by Credit Score Group</h2>
+  <!-- ──────────────────────────────────────────────────── -->
+  <!-- Chart 2: Credit Score Distribution by Age Group     -->
+  <!-- ──────────────────────────────────────────────────── -->
+  <h2>Credit Score Distribution by Age Group</h2>
   <canvas id="chart2" width="400" height="200"></canvas>
-
-  <!-- ======================================== -->
-  <!-- Chart 2: Avg Debt by Credit Score Group  -->
-  <!-- ======================================== -->
   <script>
-    const labels2 = {{ data2 | map(attribute='credit_score_group') | list | tojson }};
-    const debt2   = {{ data2 | map(attribute='avg_debt') | list | tojson }};
+    const rawData2 = {{ data2 | tojson }};
 
-    const ctx = document.getElementById('chart2');
-    new Chart(ctx, {
-      type: 'doughnut',
+    const ageGroups = ['18-25', '26-39', '40-59', '60+'];
+    const tiers = [
+      'Poor (<580)',
+      'Fair (580-669)',
+      'Good (670-739)',
+      'Very Good (740-799)',
+      'Excellent (800+)'
+    ];
+    const tierColors = [
+      'rgba(255, 99, 132, 0.7)',
+      'rgba(255, 159, 64, 0.7)',
+      'rgba(255, 205, 86, 0.7)',
+      'rgba(75, 192, 192, 0.7)',
+      'rgba(54, 162, 235, 0.7)'
+    ];
+
+    const datasets2 = tiers.map((tier, i) => ({
+      label: tier,
+      backgroundColor: tierColors[i],
+      data: ageGroups.map(age => {
+        const row = rawData2.find(r => r.age_group === age && r.credit_tier === tier);
+        return row ? row.num_users : 0;
+      })
+    }));
+
+    new Chart(document.getElementById('chart2'), {
+      type: 'bar',
       data: {
-        labels: labels2,
-        datasets: [
-          {
-            label: 'Avg Debt',
-            data: debt2,
-            backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)']
-          },
-        ]
+        labels: ageGroups,
+        datasets: datasets2
       },
       options: {
         responsive: true,
         scales: {
-          y: { beginAtZero: true }
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true }
+        },
+        plugins: {
+          legend: { position: 'bottom' }
         }
       }
     });

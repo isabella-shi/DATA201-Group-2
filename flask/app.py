@@ -24,12 +24,6 @@ def index():
     ###################################
 
     sql1 = """
-        SELECT gender, ROUND(AVG(yearly_income),2) AS avg_income, ROUND(AVG(total_debt),2) AS avg_debt
-        FROM Users
-        GROUP BY gender;
-    """
-
-    sql2 = """
         SELECT 'Above average credit score' AS credit_score_group, ROUND(AVG(total_debt),2) AS avg_debt, ROUND(AVG(credit_score)) AS avg_credit_score
         FROM Users
         WHERE credit_score > (
@@ -43,6 +37,27 @@ def index():
             SELECT AVG(credit_score)
             FROM Users
         );
+    """
+
+    sql2 = """
+        SELECT
+            CASE
+                WHEN current_age BETWEEN 18 AND 25 THEN '18-25'
+                WHEN current_age BETWEEN 26 AND 39 THEN '26-39'
+                WHEN current_age BETWEEN 40 AND 59 THEN '40-59'
+                ELSE '60+'
+            END AS age_group,
+            CASE
+                WHEN credit_score < 580 THEN 'Poor (<580)'
+                WHEN credit_score BETWEEN 580 AND 669 THEN 'Fair (580-669)'
+                WHEN credit_score BETWEEN 670 AND 739 THEN 'Good (670-739)'
+                WHEN credit_score BETWEEN 740 AND 799 THEN 'Very Good (740-799)'
+                ELSE 'Excellent (800+)'
+            END AS credit_tier,
+            COUNT(*) AS num_users
+        FROM Users
+        GROUP BY age_group, credit_tier
+        ORDER BY MIN(current_age), credit_tier;
     """
 
     ###################################
@@ -104,6 +119,7 @@ def index():
             spending_groups[g][a].append(row)
 
     chart_max = max([row['total_spent'] for row in data4]) * 1.1 if data4 else 1000
+    
     ###################################
     #                                 #
     #    Jessica's visualizations     #
