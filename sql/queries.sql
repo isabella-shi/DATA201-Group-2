@@ -74,7 +74,7 @@ JOIN Transactions_Sample t ON c.id = t.card_id
 GROUP BY u.id, u.current_age
 ORDER BY age_group, spending_rank;
 
--- User spending summary view & two follow up queries using the view
+-- User spending summary view & three follow up queries using the view
 CREATE VIEW UserSpendingSummary AS
 SELECT u.id, u.gender, u.current_age, u.credit_score, COUNT(t.id) AS total_transactions, ROUND(SUM(t.amount), 2) AS total_spent
 FROM Users u
@@ -96,6 +96,20 @@ WHERE total_spent > (
     FROM UserSpendingSummary
 ) AND credit_score >= 750
 ORDER BY total_spent DESC
+LIMIT 10;
+
+-- Top 10 high-frequency, low-spend users
+SELECT *, ROUND(total_spent / total_transactions, 2) AS avg_per_transaction
+FROM UserSpendingSummary
+WHERE total_transactions > (
+    SELECT AVG(total_transactions)
+    FROM UserSpendingSummary
+)
+AND total_spent < (
+    SELECT AVG(total_spent)
+    FROM UserSpendingSummary
+)
+ORDER BY total_transactions DESC
 LIMIT 10;
 
 -- Users with risky financial profile: high debt and low credit score
@@ -242,13 +256,11 @@ WHERE spending_rank <= 10
 ORDER BY gender, age_group, spending_rank;   
 
 
-
 -- =====================
 -- Jessica's Queries
 -- =====================
 
 -- Basic - Top 10 zipcode with the highest total Transaction amount in CA sorted from largest to smallest
-
 SELECT z.merchant_city, z.zip, CONCAT('$', FORMAT(SUM(t.amount), 2)) as `Total Amount`
 FROM ZipCodes z
 LEFT JOIN Transactions_Sample t
