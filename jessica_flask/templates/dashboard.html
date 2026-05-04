@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Financial Insights Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    :root {
+      --bg:       #0b0e1a;
+      --surface:  #12172b;
+      --border:   #242c45;
+      --text:     #e8ecf5;
+      --muted:    #6b7599;
+      --blue:     #5b8dee;
+      --pink:     #e85d75;
+      --green:    #36d9b0;
+      --amber:    #f59e0b;
+      --mono:     'DM Mono', monospace;
+      --sans:     'Syne', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height:100vh; }
+
+    /* HEADER */
+    header {
+      padding: 28px 48px 0;
+      background: linear-gradient(135deg, #0f1526 0%, #0b0e1a 60%);
+    }
+    .eyebrow { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.15em; color: var(--blue); text-transform: uppercase; margin-bottom: 8px; }
+    h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.03em; }
+    h1 span { color: var(--blue); }
+    header .meta { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-top: 8px; }
+
+    /* TABS */
+    .tabs { display: flex; gap: 0; padding: 24px 48px 0; border-bottom: 1px solid var(--border); }
+    .tab {
+      font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em;
+      padding: 12px 20px; cursor: pointer; color: var(--muted);
+      border-bottom: 2px solid transparent;
+      text-transform: uppercase; transition: all 0.15s;
+      background: none; border-top: none; border-left: none; border-right: none;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--text); border-bottom-color: var(--blue); }
+    .tab.active.churn-tab { border-bottom-color: var(--pink); }
+
+    /* PANELS */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* STAT STRIP */
+    .stats { display: flex; border-bottom: 1px solid var(--border); }
+    .stat  { flex: 1; padding: 18px 32px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: none; }
+    .stat-label { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; }
+
+    /* GRID */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 28px 48px 48px; max-width: 1400px; margin: 0 auto; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; position: relative; overflow: hidden; }
+    .card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
+    .card.blue::before  { background: var(--blue); }
+    .card.pink::before  { background: var(--pink); }
+    .card.green::before { background: var(--green); }
+    .card.amber::before { background: var(--amber); }
+    .card.full { grid-column: 1 / -1; }
+    .card h2 { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
+    .card .sub { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); margin-bottom: 16px; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th { text-align: left; padding: 6px 10px; color: var(--muted); font-weight: 400; font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.08em; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 10px; border-bottom: 1px solid rgba(36,44,69,0.5); }
+    tr:last-child td { border-bottom: none; }
+
+    /* BADGES */
+    .badge { font-family: var(--mono); font-size: 0.62rem; padding: 3px 8px; border-radius: 20px; }
+    .badge-churned { background: rgba(232,93,117,0.15); color: var(--pink);  }
+    .badge-atrisk  { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .badge-active  { background: rgba(54,217,176,0.15); color: var(--green); }
+
+    .action { font-family: var(--mono); font-size: 0.62rem; padding: 3px 9px; border-radius: 20px; border: 1px solid; }
+    .action-learn   { color: var(--pink);  border-color: var(--pink);  }
+    .action-outreach{ color: var(--amber); border-color: var(--amber); }
+    .action-reward  { color: var(--green); border-color: var(--green); }
+
+    footer { text-align: center; padding: 20px; font-family: var(--mono); font-size: 0.68rem; color: var(--muted); border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Financial Analytics · 2013-2019</div>
+  <h1>Insights <span>Dashboard</span></h1>
+  <div class="meta">Source: users · cards · transactions</div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" id="tab-mom"   onclick="switchTab('mom')">MoM Transactions</button>
+  <button class="tab churn-tab" id="tab-churn" onclick="switchTab('churn')">Customer Churn</button>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- PANEL 1: MoM TRANSACTIONS                                         -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="panel active" id="panel-mom">
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total Volume (2018)</div>
+      <div class="stat-value" style="color:var(--blue)">${{ "{:,.0f}".format(total_volume) }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Peak Month (2018)</div>
+      <div class="stat-value" style="color:var(--green)">{{ mom_peak_month }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Avg MoM Change (2018)</div>
+      <div class="stat-value" style="color:var(--amber)">{% if avg_mom_pct >= 0 %}+{% endif %}{{ avg_mom_pct }}%</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Best Single MoM (2018)</div>
+      <div class="stat-value" style="color:var(--green)">+{{ best_mom_pct }}%</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card full blue">
+      <h2>Monthly Spend &amp; MoM % Change — 2018 Only</h2>
+      <div class="sub">Window functions: LAG() for month-over-month comparison</div>
+      <div id="chart-mom" style="height:380px"></div>
+    </div>
+
+    <div class="card full green">
+      <h2>Cumulative Spend &amp; Rolling 3-Month Average — All Time</h2>
+      <div class="sub">Full dataset (2013-2019) — shows long-term growth trend</div>
+      <div id="chart-rolling" style="height:340px"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- PANEL 2: CHURN                                                    -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-churn">
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Revenue Lost (Churned)</div>
+      <div class="stat-value" style="color:var(--pink)">${{ "{:,.0f}".format(segments['Churned']['total_spend']) }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Revenue at Risk</div>
+      <div class="stat-value" style="color:var(--amber)">${{ "{:,.0f}".format(segments['At Risk']['total_spend']) }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Retained (Active)</div>
+      <div class="stat-value" style="color:var(--green)">${{ "{:,.0f}".format(segments['Active']['total_spend']) }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Customers</div>
+      <div class="stat-value" style="color:var(--blue)">{{ segments['Churned']['count'] + segments['At Risk']['count'] + segments['Active']['count'] }}</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card pink">
+      <h2>Activity Status Distribution</h2>
+      <div class="sub">Customer count per churn tier</div>
+      <div id="chart-donut" style="height:280px"></div>
+    </div>
+
+    <div class="card blue">
+      <h2>Avg Credit Score by Segment</h2>
+      <div class="sub">Higher score = lower churn risk</div>
+      <div id="chart-credit" style="height:280px"></div>
+    </div>
+
+    <div class="card full amber">
+      <h2>Win-Back Priority List</h2>
+      <div class="sub">At Risk customers ranked by lifetime spend — contact first (includes 90-365 days inactive)</div>
+      <table>
+        <thead>
+          <tr><th>Client ID</th><th>Age</th><th>Days inactive</th><th>Lifetime spend</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for r in winback %}
+          <tr>
+            <td>{{ r.client_id }}</td>
+            <td>{{ r.current_age }}</td>
+            <td>{{ r.days_inactive }}d</td>
+            <td>${{ "{:,.0f}".format(r.lifetime_spend | float) }}</td>
+            <td><span class="action action-outreach">Send offer</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card green">
+      <h2>Segment Action Plan</h2>
+      <div class="sub">Recommended next step per tier</div>
+      <table>
+        <thead>
+          <tr><th>Segment</th><th>Customers</th><th>Avg spend</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% set action_map = {
+            'Churned': ('badge-churned', 'action-learn',    'Analyze & learn'),
+            'At Risk':  ('badge-atrisk',  'action-outreach', 'Outreach now'),
+            'Active':   ('badge-active',  'action-reward',   'Loyalty reward')
+          } %}
+          {% for s in statuses %}
+          {% set seg = segments[s] %}
+          {% set badges = action_map[s] %}
+          <tr>
+            <td><span class="badge {{ badges[0] }}">{{ s }}</span></td>
+            <td>{{ seg['count'] }}</td>
+            <td>${{ "{:,.0f}".format(seg['avg_spend']) }}</td>
+            <td><span class="action {{ badges[1] }}">{{ badges[2] }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>Built with Flask · PyMySQL · Plotly.js</footer>
+
+<script>
+const MUTED = '#6b7599';
+const GRID  = '#1e2540';
+const TEXT  = '#e8ecf5';
+const cfg   = { responsive: true, displayModeBar: false };
+const base  = { paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{ family:"'DM Mono',monospace", color:TEXT, size:11 } };
+
+// ════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  setTimeout(() => {
+    document.querySelectorAll('#panel-' + name + ' [id^="chart-"]').forEach(el => {
+      try { Plotly.Plots.resize(el); } catch(e) {}
+    });
+  }, 50);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PANEL 1: MoM TRANSACTIONS
+// ════════════════════════════════════════════════════════════════════
+const mom2018Data = {{ mom_2018 | tojson }};
+const cumulativeData = {{ cumulative | tojson }};
+
+// Chart 1: 2018 Monthly Spend + MoM %
+Plotly.newPlot('chart-mom', [
+  {
+    type: 'bar',
+    name: 'Monthly Spend',
+    x: mom2018Data.map(r => r.month),
+    y: mom2018Data.map(r => parseFloat(r.total_spend)),
+    marker: {
+      color: mom2018Data.map(r => (r.mom_pct_change === null || r.mom_pct_change >= 0)
+        ? 'rgba(91,141,238,0.75)'
+        : 'rgba(232,93,117,0.6)')
+    },
+    yaxis: 'y',
+    hovertemplate: '<b>%{x}</b><br>Spend: $%{y:,.0f}<extra></extra>',
+  },
+  {
+    type: 'scatter',
+    name: 'MoM % Change',
+    mode: 'lines+markers',
+    x: mom2018Data.map(r => r.month),
+    y: mom2018Data.map(r => r.mom_pct_change),
+    line: { color: '#f59e0b', width: 2.5, shape: 'spline' },
+    marker: { size: 5, color: '#f59e0b' },
+    yaxis: 'y2',
+    hovertemplate: '<b>%{x}</b><br>MoM: %{y}%<extra></extra>',
+  }
+], {
+  ...base,
+  margin: { t:10, b:60, l:80, r:80 },
+  xaxis: { gridcolor: GRID, tickfont: { color: MUTED } },
+  yaxis: { gridcolor: GRID, tickfont: { color: MUTED }, title: { text: 'Total Spend ($)', font: { color: MUTED, size: 10 } }, tickformat: '$,.0s' },
+  yaxis2: { gridcolor: GRID, tickfont: { color: '#f59e0b' }, title: { text: 'MoM % Change', font: { color: '#f59e0b', size: 10 } }, ticksuffix: '%', overlaying: 'y', side: 'right', zeroline: true, zerolinecolor: 'rgba(245,158,11,0.3)' },
+  legend: { orientation: 'h', y: -0.18, font: { color: MUTED, size: 10 }, bgcolor: 'transparent' },
+  bargap: 0.3,
+}, cfg);
+
+// Chart 2: All-time Cumulative + Rolling Avg
+Plotly.newPlot('chart-rolling', [
+  {
+    type: 'scatter', name: 'Cumulative Spend', mode: 'lines',
+    x: cumulativeData.map(r => r.month),
+    y: cumulativeData.map(r => parseFloat(r.cumulative_spend)),
+    fill: 'tozeroy', fillcolor: 'rgba(54,217,176,0.1)',
+    line: { color: '#36d9b0', width: 2, shape: 'spline' },
+    yaxis: 'y',
+    hovertemplate: '<b>%{x}</b><br>Cumulative: $%{y:,.0f}<extra></extra>',
+  },
+  {
+    type: 'scatter', name: '3-Month Rolling Avg', mode: 'lines',
+    x: cumulativeData.map(r => r.month),
+    y: cumulativeData.map(r => parseFloat(r.rolling_3mo_avg)),
+    line: { color: '#5b8dee', width: 2, dash: 'dot' },
+    yaxis: 'y2',
+    hovertemplate: '<b>%{x}</b><br>3-mo avg: $%{y:,.0f}<extra></extra>',
+  }
+], {
+  ...base,
+  margin: { t:10, b:60, l:80, r:80 },
+  xaxis: { gridcolor: GRID, tickfont: { color: MUTED } },
+  yaxis: { gridcolor: GRID, tickfont: { color: MUTED }, title: { text: 'Cumulative ($)', font: { color: MUTED, size: 10 } }, tickformat: '$,.0s' },
+  yaxis2: { gridcolor: GRID, tickfont: { color: '#5b8dee' }, title: { text: '3-mo Avg ($)', font: { color: '#5b8dee', size: 10 } }, tickformat: '$,.0s', overlaying: 'y', side: 'right' },
+  legend: { orientation: 'h', y: -0.18, font: { color: MUTED, size: 10 }, bgcolor: 'transparent' },
+}, cfg);
+
+// ════════════════════════════════════════════════════════════════════
+// PANEL 2: CHURN
+// ════════════════════════════════════════════════════════════════════
+const COLORS  = { 'Churned':'#e85d75','At Risk':'#f59e0b','Active':'#36d9b0' };
+const STATUSES = ['Churned','At Risk','Active'];
+const segments  = {{ segments | tojson }};
+
+Plotly.newPlot('chart-donut', [{
+  type: 'pie', hole: 0.6,
+  labels: STATUSES,
+  values: STATUSES.map(s => segments[s].count),
+  marker: { colors: STATUSES.map(s => COLORS[s]) },
+  textinfo: 'label+percent', textfont: { color: TEXT, size: 11 },
+  hovertemplate: '<b>%{label}</b><br>%{value} customers<extra></extra>',
+}], { ...base, margin: { t:10, b:10, l:10, r:10 }, showlegend: false }, cfg);
+
+Plotly.newPlot('chart-credit', [{
+  type: 'bar',
+  x: STATUSES,
+  y: STATUSES.map(s => segments[s].avg_credit),
+  marker: { color: STATUSES.map(s => COLORS[s]) },
+  hovertemplate: '<b>%{x}</b><br>Avg credit score: %{y}<extra></extra>',
+}], {
+  ...base, margin: { t:10, b:40, l:50, r:20 },
+  xaxis: { gridcolor: GRID, tickfont: { color: MUTED } },
+  yaxis: { gridcolor: GRID, tickfont: { color: MUTED }, range: [400, 900], title: { text: 'Credit Score', font: { color: MUTED, size: 10 } } },
+}, cfg);
+</script>
+
+</body>
+</html>
