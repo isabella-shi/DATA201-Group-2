@@ -260,8 +260,172 @@ ORDER BY gender, age_group, spending_rank;
 -- Jessica's Queries
 -- =====================
 
+-- Basic 1 - Top 10 zipcode with the highest total Transaction amount sorted from largest to smallest
+SELECT z.city, z.zip, CONCAT('$', FORMAT(SUM(t.amount), 2)) as `Total Amount`
+FROM ZipCodes z
+LEFT JOIN Transactions_Sample t
+ON t.zip = z.zip
+GROUP BY z.state, z.city, z.zip
+ORDER BY SUM(t.amount) DESC
+LIMIT 10;
+
+-- Basic 2 - Show Average transaction and Total transaction amount by age bracket
+SELECT 
+    CASE 
+        WHEN u.current_age BETWEEN 18 AND 24 THEN '18-24'
+        WHEN u.current_age BETWEEN 25 AND 34 THEN '25-34'
+        WHEN u.current_age BETWEEN 35 AND 44 THEN '35-44'
+        WHEN u.current_age BETWEEN 45 AND 54 THEN '45-54'
+        WHEN u.current_age BETWEEN 55 AND 64 THEN '55-64'
+        ELSE '65+'
+    END AS age_bracket,
+    CONCAT('$', FORMAT(SUM(t.amount), 2))  AS total_transaction_amount,
+    CONCAT('$', FORMAT(AVG(t.amount), 2))  AS avg_transaction_amount
+FROM users u
+INNER JOIN cards c ON u.id = c.client_id
+INNER JOIN Transactions_Sample t ON c.id = t.card_id
+GROUP BY age_bracket
+ORDER BY age_bracket;
+
+-- Advance 1 - Optimize and analyze query using index 
+CREATE INDEX idx_cards_client_id ON cards(client_id);
+CREATE INDEX idx_txn_card_id ON transactions(card_id);
+CREATE INDEX idx_amount ON transactions(amount);
+
+EXPLAIN Analyze
+SELECT 
+    t.id AS transaction_id,
+    t.date AS transaction_date,
+    t.amount,
+    c.card_brand,
+    c.card_type,
+    c.client_id
+FROM transactions t
+JOIN financialtransactions.cards c
+    ON t.card_id = c.id
+WHERE amount > 100
+ORDER BY t.amount DESC;
+
+-- Advance 2 - Flag cards with high # of transactions (outliers) within a short time window (1 week)
+WITH weekly_counts AS (
+    SELECT 
+        c.client_id,
+        WEEK(date) AS week_number,
+        COUNT(t.id) AS weekly_transactions
+    FROM transactions_sample t
+    JOIN cards c ON t.card_id = c.id
+    GROUP BY c.client_id, week_number
+),
+customer_stats AS (
+    SELECT 
+        client_id,
+        AVG(weekly_transactions) AS customer_mean,
+        STDDEV(weekly_transactions) AS customer_std
+    FROM weekly_counts
+    GROUP BY client_id
+)
+SELECT 
+    wc.client_id,
+    wc.week_number,
+    wc.weekly_transactions,
+    cs.customer_mean,
+    cs.customer_std,
+    ROUND((wc.weekly_transactions - cs.customer_mean) / cs.customer_std, 2) AS z_score
+FROM weekly_counts wc
+JOIN customer_stats cs ON wc.client_id = cs.client_id
+WHERE ABS((wc.weekly_transactions - cs.customer_mean) / cs.customer_std) > 3
+HAVING weekly_transactions > 2
+ORDER BY weekly_transactions DESC;
 
 
+#Advance 3 - identify customers through RFM scoring (recency, frequency, monetary)
+WITH rfm_raw AS (
+    SELECT
+        c.client_id,
+        DATEDIFF(MAX(t.date), CURDATE())    AS recency_days,
+        COUNT(t.id)                          AS frequency,
+        ROUND(SUM(t.amount), 2)              AS monetary
+    FROM transactions t
+    JOIN cards c ON t.card_id = c.id         
+    GROUP BY c.client_id
+),
+rfm_scored AS (
+    SELECT *,
+        NTILE(5) OVER (ORDER BY recency_days DESC)  AS r_score,
+        NTILE(5) OVER (ORDER BY frequency ASC)       AS f_score,
+        NTILE(5) OVER (ORDER BY monetary ASC)        AS m_score
+    FROM rfm_raw
+)
+SELECT
+    r.client_id,
+    r.recency_days,
+    r.frequency,
+    r.monetary,
+    r.r_score,
+    r.f_score,
+    r.m_score,
+    ROUND((r.r_score + r.f_score + r.m_score) / 3.0, 2) AS rfm_composite,
+    CASE
+        WHEN (r.r_score + r.f_score + r.m_score) >= 13 THEN 'Champions'
+        WHEN (r.r_score + r.f_score + r.m_score) >= 10 THEN 'Loyal'
+        WHEN (r.r_score + r.f_score + r.m_score) >= 7  THEN 'At Risk'
+        ELSE 'Dormant'
+    END AS customer_segment
+FROM rfm_scored r
+JOIN Users u ON r.client_id = u.id           
+ORDER BY rfm_composite DESC;
+
+#Advance 4 - monthly time series
+WITH monthly_totals AS (
+    SELECT
+        DATE_FORMAT(t.date, '%Y-%m') AS month,
+        COUNT(t.id) AS total_transactions,
+        COUNT(DISTINCT c.client_id) AS active_customers,
+        ROUND(SUM(t.amount), 2) AS total_spend,
+        ROUND(AVG(t.amount), 2) AS avg_transaction_size
+    FROM transactions t
+    JOIN cards c ON t.card_id = c.id
+    GROUP BY month
+)
+SELECT
+    month,
+    total_transactions,
+    active_customers,
+    total_spend,
+    avg_transaction_size,
+    ROUND((total_spend - LAG(total_spend) OVER (ORDER BY month))/ LAG(total_spend) OVER (ORDER BY month) * 100, 1
+    ) AS mom_pct_change
+FROM monthly_totals
+ORDER BY month;
+WITH last_tx AS (
+    SELECT
+        c.client_id,
+        MAX(t.date) AS last_transaction_date,
+        COUNT(t.id) AS lifetime_transactions,
+        ROUND(SUM(t.amount)) AS lifetime_spend
+    FROM transactions t
+    JOIN cards c ON t.card_id = c.id              
+    GROUP BY c.client_id
+)
+SELECT
+    l.client_id,
+    u.credit_score,
+    u.yearly_income,
+    DATEDIFF('2019-12-31', l.last_transaction_date) AS days_inactive,
+    l.lifetime_transactions,
+    l.lifetime_spend,
+    CASE
+        WHEN DATEDIFF('2019-12-31', l.last_transaction_date) > 365 THEN 'Churned'
+        WHEN DATEDIFF('2019-12-31', l.last_transaction_date) > 180 THEN 'At Risk'
+        WHEN DATEDIFF('2019-12-31', l.last_transaction_date) > 90  THEN 'Cooling'
+        ELSE 'Active'
+    END AS activity_status
+FROM last_tx l
+JOIN users u ON l.client_id = u.id
+ORDER BY activity_status, lifetime_spend DESC;
+
+SELECT MAX(date) AS last_transaction_date
+FROM transactions;
 
 -- =====================
 -- Rachel's Queries
