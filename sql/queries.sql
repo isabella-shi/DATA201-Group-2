@@ -269,23 +269,11 @@ GROUP BY z.state, z.city, z.zip
 ORDER BY SUM(t.amount) DESC
 LIMIT 10;
 
--- Basic 2 - Show Average transaction and Total transaction amount by age bracket
-SELECT 
-    CASE 
-        WHEN u.current_age BETWEEN 18 AND 24 THEN '18-24'
-        WHEN u.current_age BETWEEN 25 AND 34 THEN '25-34'
-        WHEN u.current_age BETWEEN 35 AND 44 THEN '35-44'
-        WHEN u.current_age BETWEEN 45 AND 54 THEN '45-54'
-        WHEN u.current_age BETWEEN 55 AND 64 THEN '55-64'
-        ELSE '65+'
-    END AS age_bracket,
-    CONCAT('$', FORMAT(SUM(t.amount), 2))  AS total_transaction_amount,
-    CONCAT('$', FORMAT(AVG(t.amount), 2))  AS avg_transaction_amount
-FROM users u
-INNER JOIN cards c ON u.id = c.client_id
-INNER JOIN Transactions_Sample t ON c.id = t.card_id
-GROUP BY age_bracket
-ORDER BY age_bracket;
+-- Basic 2 
+SELECT MAX(date) AS last_transaction_date
+FROM transactions
+WHERE amount > 100
+AND total_debt = 0;
 
 -- Advance 1 - Optimize and analyze query using index 
 CREATE INDEX idx_cards_client_id ON cards(client_id);
@@ -338,7 +326,7 @@ HAVING weekly_transactions > 2
 ORDER BY weekly_transactions DESC;
 
 
-#Advance 3 - identify customers through RFM scoring (recency, frequency, monetary)
+-- Advance 3 - identify customers through RFM scoring (recency, frequency, monetary)
 WITH rfm_raw AS (
     SELECT
         c.client_id,
@@ -375,7 +363,7 @@ FROM rfm_scored r
 JOIN Users u ON r.client_id = u.id           
 ORDER BY rfm_composite DESC;
 
-#Advance 4 - monthly time series
+-- Advance 4 - monthly time series
 WITH monthly_totals AS (
     SELECT
         DATE_FORMAT(t.date, '%Y-%m') AS month,
@@ -424,8 +412,23 @@ FROM last_tx l
 JOIN users u ON l.client_id = u.id
 ORDER BY activity_status, lifetime_spend DESC;
 
-SELECT MAX(date) AS last_transaction_date
-FROM transactions;
+-- Advance 5 - Show Average transaction and Total transaction amount by age bracket
+SELECT 
+    CASE 
+        WHEN u.current_age BETWEEN 18 AND 24 THEN '18-24'
+        WHEN u.current_age BETWEEN 25 AND 34 THEN '25-34'
+        WHEN u.current_age BETWEEN 35 AND 44 THEN '35-44'
+        WHEN u.current_age BETWEEN 45 AND 54 THEN '45-54'
+        WHEN u.current_age BETWEEN 55 AND 64 THEN '55-64'
+        ELSE '65+'
+    END AS age_bracket,
+    CONCAT('$', FORMAT(SUM(t.amount), 2))  AS total_transaction_amount,
+    CONCAT('$', FORMAT(AVG(t.amount), 2))  AS avg_transaction_amount
+FROM users u
+INNER JOIN cards c ON u.id = c.client_id
+INNER JOIN Transactions_Sample t ON c.id = t.card_id
+GROUP BY age_bracket
+ORDER BY age_bracket;
 
 -- =====================
 -- Rachel's Queries
