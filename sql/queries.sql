@@ -173,7 +173,7 @@ JOIN ZipCodes z ON t.zip = z.zip
 JOIN UserAvgSpending uas ON c.client_id = uas.client_id
 WHERE t.amount > uas.threshold
 ORDER BY t.amount DESC
-LIMIT 50;
+LIMIT 20;
 
 -- Identify transactions occurring within 60 minutes for potential fraud detection.
 CREATE OR REPLACE VIEW Rapid_Transaction_Alerts AS
@@ -188,7 +188,8 @@ SELECT *
 FROM TransactionIntervals
 WHERE TIMESTAMPDIFF(MINUTE, prev_trans_time, current_trans_time) < 60;
 SELECT *
-FROM Rapid_Transaction_Alerts;
+FROM Rapid_Transaction_Alerts
+LIMIT 20;
 
 -- Explain analyze before index
 EXPLAIN ANALYZE
