@@ -179,17 +179,35 @@ LIMIT 20;
 CREATE OR REPLACE VIEW Rapid_Transaction_Alerts AS
 WITH TransactionIntervals AS (
     SELECT 
+        id,
         card_id, 
+        merchant_id,
+        amount AS current_amount,
         date AS current_trans_time,
-        LAG(date) OVER (PARTITION BY card_id ORDER BY date) AS prev_trans_time
-    FROM Transactions_Sample
+        LAG(amount) OVER (PARTITION BY card_id ORDER BY date, id) AS prev_amount,
+        LAG(date) OVER (PARTITION BY card_id ORDER BY date, id) AS prev_trans_time,
+        LAG(merchant_id) OVER (PARTITION BY card_id ORDER BY date, id) AS prev_merchant_id
+    FROM transactions 
+    WHERE amount > 0 AND date >= '2019-01-01 00:00:00' AND date <= '2019-12-31 23:59:59'
 )
-SELECT *
+SELECT 
+    id,
+    card_id,
+    merchant_id AS current_merchant_id,
+    current_trans_time,
+    prev_trans_time,
+    current_amount,
+    prev_amount,
+    ABS(current_amount - prev_amount) AS amount_diff,
+    CASE WHEN merchant_id != prev_merchant_id THEN 'Yes' ELSE 'No' END AS cross_merchant
 FROM TransactionIntervals
-WHERE TIMESTAMPDIFF(MINUTE, prev_trans_time, current_trans_time) < 60;
-SELECT *
-FROM Rapid_Transaction_Alerts
-LIMIT 20;
+WHERE prev_trans_time IS NOT NULL 
+  AND TIMESTAMPDIFF(MINUTE, prev_trans_time, current_trans_time) < 2
+  AND current_amount != prev_amount
+  AND merchant_id != prev_merchant_id;
+
+SELECT*
+FROM Rapid_Transaction_Alerts;
 
 -- Explain analyze before index
 EXPLAIN ANALYZE
@@ -197,8 +215,7 @@ SELECT *
 FROM Rapid_Transaction_Alerts;
 
 -- Explain analyze after index
-CREATE INDEX idx_card_date ON Transactions_Sample(card_id, date);
-
+CREATE INDEX idx_fraud_detect ON transactions(card_id, date, id, amount, merchant_id);
 EXPLAIN ANALYZE
 SELECT *
 FROM Rapid_Transaction_Alerts;
