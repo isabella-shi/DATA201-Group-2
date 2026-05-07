@@ -198,8 +198,7 @@ SELECT
     prev_trans_time,
     current_amount,
     prev_amount,
-    ABS(current_amount - prev_amount) AS amount_diff,
-    CASE WHEN merchant_id != prev_merchant_id THEN 'Yes' ELSE 'No' END AS cross_merchant
+    ABS(current_amount - prev_amount) AS amount_diff
 FROM TransactionIntervals
 WHERE prev_trans_time IS NOT NULL 
   AND TIMESTAMPDIFF(MINUTE, prev_trans_time, current_trans_time) < 2
