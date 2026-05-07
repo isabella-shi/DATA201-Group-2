@@ -74,44 +74,6 @@ JOIN Transactions_Sample t ON c.id = t.card_id
 GROUP BY u.id, u.current_age
 ORDER BY age_group, spending_rank;
 
--- User spending summary view & three follow up queries using the view
-CREATE VIEW UserSpendingSummary AS
-SELECT u.id, u.gender, u.current_age, u.credit_score, COUNT(t.id) AS total_transactions, ROUND(SUM(t.amount), 2) AS total_spent
-FROM Users u
-JOIN Cards c ON u.id = c.client_id
-JOIN Transactions_Sample t ON c.id = t.card_id
-GROUP BY u.id, u.gender, u.current_age, u.credit_score;
-
--- Top 10 highest spenders overall
-SELECT *
-FROM UserSpendingSummary
-ORDER BY total_spent DESC
-LIMIT 10;
-
--- Top 10 users with high spending & good credit
-SELECT *
-FROM UserSpendingSummary
-WHERE total_spent > (
-	SELECT AVG(total_spent)
-    FROM UserSpendingSummary
-) AND credit_score >= 750
-ORDER BY total_spent DESC
-LIMIT 10;
-
--- Top 10 high-frequency, low-spend users
-SELECT *, ROUND(total_spent / total_transactions, 2) AS avg_per_transaction
-FROM UserSpendingSummary
-WHERE total_transactions > (
-    SELECT AVG(total_transactions)
-    FROM UserSpendingSummary
-)
-AND total_spent < (
-    SELECT AVG(total_spent)
-    FROM UserSpendingSummary
-)
-ORDER BY total_transactions DESC
-LIMIT 10;
-
 -- Users with risky financial profile: high debt and low credit score
 WITH AvgMetrics AS (
 	SELECT AVG(total_debt) AS avg_debt, AVG(credit_score) AS avg_score
@@ -125,10 +87,38 @@ ORDER BY u.total_debt DESC;
 -- Index on date in Transactions to speed up time-based queries
 CREATE INDEX idx_transaction_date ON Transactions(date);
 
-EXPLAIN ANALYZE SELECT id, amount, date
+EXPLAIN ANALYZE
+SELECT id, amount, date
 FROM Transactions
 WHERE date BETWEEN '2018-07-12 00:00:00' AND '2018-07-12 23:59:59'
 ORDER BY date;
+
+-- User spending summary monthly view & one follow up query using the view
+CREATE VIEW UserSpendingSummaryMonthly AS
+SELECT 
+    u.id, 
+    u.gender, 
+    u.current_age, 
+    u.credit_score,
+    COUNT(t.id) AS total_transactions,
+    ROUND(SUM(t.amount), 2) AS total_spent
+FROM Users u
+JOIN Cards c ON u.id = c.client_id
+JOIN Transactions t ON c.id = t.card_id
+WHERE t.date >= '2019-01-01' AND t.date < '2019-02-01'
+GROUP BY u.id, u.gender, u.current_age, u.credit_score;
+
+-- Top 10 high-frequency, low-spend users in January 2019
+SELECT *, ROUND(total_spent / total_transactions, 2) AS avg_per_transaction
+FROM UserSpendingSummaryMonthly
+WHERE total_transactions > (
+    SELECT AVG(total_transactions) FROM UserSpendingSummaryMonthly
+)
+AND total_spent < (
+    SELECT AVG(total_spent) FROM UserSpendingSummaryMonthly
+)
+ORDER BY total_transactions DESC
+LIMIT 10;
 
 
 -- =====================
