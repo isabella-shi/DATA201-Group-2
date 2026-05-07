@@ -17,18 +17,6 @@ LIMIT 100000;
 -- Isabella's Queries
 -- =====================
 
--- Average credit score by age group
-SELECT
-	CASE
-		WHEN current_age BETWEEN 18 AND 25 THEN '18-25'
-        WHEN current_age BETWEEN 26 AND 39 THEN '26-39'
-        WHEN current_age BETWEEN 40 AND 59 THEN '40-59'
-        ELSE '60+'
-	END AS age_group, ROUND(AVG(credit_score)) AS avg_credit_score, COUNT(*) AS num_users
-FROM Users
-GROUP BY age_group
-ORDER BY MIN(age_group);
-
 -- Average income and debt by gender
 SELECT gender, ROUND(AVG(yearly_income),2) AS avg_income, ROUND(AVG(total_debt),2) AS avg_debt
 FROM Users
@@ -48,6 +36,26 @@ WHERE credit_score < (
 	SELECT AVG(credit_score)
     FROM Users
 );
+
+-- Credit score distribution by age group
+SELECT
+	CASE
+		WHEN current_age BETWEEN 18 AND 25 THEN '18-25'
+		WHEN current_age BETWEEN 26 AND 39 THEN '26-39'
+		WHEN current_age BETWEEN 40 AND 59 THEN '40-59'
+		ELSE '60+'
+	END AS age_group,
+	CASE
+		WHEN credit_score < 580 THEN 'Poor (<580)'
+		WHEN credit_score BETWEEN 580 AND 669 THEN 'Fair (580-669)'
+		WHEN credit_score BETWEEN 670 AND 739 THEN 'Good (670-739)'
+		WHEN credit_score BETWEEN 740 AND 799 THEN 'Very Good (740-799)'
+		ELSE 'Excellent (800+)'
+	END AS credit_tier,
+	COUNT(*) AS num_users
+FROM Users
+GROUP BY age_group, credit_tier
+ORDER BY MIN(current_age), credit_tier;
 
 -- Rank users by total spending within each age group
 SELECT u.id,
@@ -95,11 +103,7 @@ ORDER BY date;
 
 -- User spending summary monthly view & one follow up query using the view
 CREATE VIEW UserSpendingSummaryMonthly AS
-SELECT 
-    u.id, 
-    u.gender, 
-    u.current_age, 
-    u.credit_score,
+SELECT u.id, u.gender, u.current_age, u.credit_score,
     COUNT(t.id) AS total_transactions,
     ROUND(SUM(t.amount), 2) AS total_spent
 FROM Users u
