@@ -175,7 +175,7 @@ WHERE t.amount > uas.threshold
 ORDER BY t.amount DESC
 LIMIT 20;
 
--- Identify transactions occurring within 60 minutes for potential fraud detection.
+-- Rapid Sequential Transactions
 CREATE OR REPLACE VIEW Rapid_Transaction_Alerts AS
 WITH TransactionIntervals AS (
     SELECT 
