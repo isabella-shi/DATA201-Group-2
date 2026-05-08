@@ -422,4 +422,286 @@
         });
     });
     </script>
+
+  <!-- ================================================= -->
+  <!-- Jessica's Chart 1: YoY Analysis                  -->
+  <!-- ================================================= -->
+  <h2 class="ua-title">Year-over-Year Analysis — 2018</h2>
+  
+  <div class="ua-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+      <div>
+        <h3 class="ua-subtitle" id="yoy-chart-title">Monthly Spend & YoY % Change</h3>
+        <p style="color: #65676b; font-size: 0.85em;">Window functions: LAG(column, 12) for year-over-year comparison</p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label style="font-size: 0.85em; color: #65676b;">Metric:</label>
+        <select id="yoy-metric-filter" style="background: white; color: #1c1e21; border: 1px solid #ddd; border-radius: 6px; padding: 6px 12px; font-size: 0.85em; cursor: pointer;">
+          <option value="spend">Total Spend</option>
+          <option value="transactions">Total Transactions</option>
+          <option value="customers">Active Customers</option>
+        </select>
+      </div>
+    </div>
+    
+    <div style="height: 400px;">
+      <canvas id="yoyChart"></canvas>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f2f5;">
+      <div>
+        <div style="font-size: 0.75em; color: #65676b; text-transform: uppercase; margin-bottom: 5px;">Peak Month</div>
+        <div style="font-size: 1.3em; font-weight: bold; color: #1a73e8;">{{ yoy_stats.peak_month }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.75em; color: #65676b; text-transform: uppercase; margin-bottom: 5px;">Avg YoY Growth</div>
+        <div style="font-size: 1.3em; font-weight: bold; color: #2ecc71;">+{{ yoy_stats.avg_yoy }}%</div>
+      </div>
+      <div>
+        <div style="font-size: 0.75em; color: #65676b; text-transform: uppercase; margin-bottom: 5px;">Best YoY Month</div>
+        <div style="font-size: 1.3em; font-weight: bold; color: #2ecc71;">+{{ yoy_stats.best_yoy }}%</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof Chart === 'undefined') return;
+
+    const yoyData = {{ data5 | tojson | safe }};
+    
+    function renderYoYChart(metric = 'spend') {
+      let yData, title, yAxisLabel;
+      
+      switch(metric) {
+        case 'transactions':
+          yData = yoyData.map(r => r.total_transactions);
+          title = 'Monthly Transactions & YoY % Change';
+          yAxisLabel = 'Total Transactions';
+          break;
+        case 'customers':
+          yData = yoyData.map(r => r.active_customers);
+          title = 'Active Customers & YoY % Change';
+          yAxisLabel = 'Active Customers';
+          break;
+        default:
+          yData = yoyData.map(r => r.total_spend);
+          title = 'Monthly Spend & YoY % Change';
+          yAxisLabel = 'Total Spend ($)';
+      }
+      
+      document.getElementById('yoy-chart-title').textContent = title;
+      
+      const ctx = document.getElementById('yoyChart');
+      if (window.yoyChartInstance) {
+        window.yoyChartInstance.destroy();
+      }
+      
+      window.yoyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: yoyData.map(r => r.month),
+          datasets: [
+            {
+              label: yAxisLabel,
+              data: yData,
+              backgroundColor: yoyData.map(r => 
+                (r.yoy_pct_change === null || r.yoy_pct_change >= 0) 
+                  ? 'rgba(26, 115, 232, 0.7)' 
+                  : 'rgba(233, 30, 99, 0.7)'
+              ),
+              yAxisID: 'y',
+              order: 2
+            },
+            {
+              label: 'YoY % Change',
+              data: yoyData.map(r => r.yoy_pct_change),
+              type: 'line',
+              borderColor: '#f59e0b',
+              backgroundColor: 'transparent',
+              borderWidth: 3,
+              pointRadius: 5,
+              pointBackgroundColor: '#f59e0b',
+              tension: 0.4,
+              yAxisID: 'y1',
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: yAxisLabel
+              },
+              ticks: {
+                callback: function(value) {
+                  if (metric === 'spend') {
+                    return '$' + (value / 1000000).toFixed(1) + 'M';
+                  }
+                  return value.toLocaleString();
+                }
+              }
+            },
+            y1: {
+              position: 'right',
+              title: {
+                display: true,
+                text: 'YoY % Change',
+                color: '#f59e0b'
+              },
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                },
+                color: '#f59e0b'
+              },
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    renderYoYChart('spend');
+    
+    document.getElementById('yoy-metric-filter').addEventListener('change', function(e) {
+      renderYoYChart(e.target.value);
+    });
+  });
+  </script>
+
+  <!-- ================================================= -->
+  <!-- Jessica's Chart 2: Customer Churn                -->
+  <!-- ================================================= -->
+  <h2 class="ua-title">Customer Churn Analysis</h2>
+  
+  <div class="ua-grid">
+    <div class="ua-card">
+      <h3 class="ua-subtitle">Activity Status Distribution</h3>
+      <div style="height: 300px;">
+        <canvas id="churnDonutChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="ua-card">
+      <h3 class="ua-subtitle">Avg Credit Score by Segment</h3>
+      <div style="height: 300px;">
+        <canvas id="churnBarChart"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <div class="ua-card">
+    <h3 class="ua-subtitle">Segment Summary</h3>
+    <table class="ua-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th class="right">Customers</th>
+          <th class="right">Avg Credit Score</th>
+          <th class="right">Total Lifetime Spend</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for status in ['Active', 'At Risk', 'Churned'] %}
+        {% if status in churn_segments %}
+        <tr>
+          <td>
+            <span style="padding: 4px 10px; border-radius: 12px; font-size: 0.8em; 
+                         {% if status == 'Active' %}background: rgba(46, 204, 113, 0.15); color: #2ecc71;
+                         {% elif status == 'At Risk' %}background: rgba(245, 158, 11, 0.15); color: #f59e0b;
+                         {% else %}background: rgba(233, 30, 99, 0.15); color: #e91e63;{% endif %}">
+              {{ status }}
+            </span>
+          </td>
+          <td class="right highlight">{{ "{:,}".format(churn_segments[status].count) }}</td>
+          <td class="right">{{ churn_segments[status].avg_credit }}</td>
+          <td class="right mono">${{ "{:,.0f}".format(churn_segments[status].total_spend) }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof Chart === 'undefined') return;
+
+    const churnSegs = {{ churn_segments | tojson | safe }};
+    const statusOrder = ['Active', 'At Risk', 'Churned'];
+    const colors = {
+      'Active': '#2ecc71',
+      'At Risk': '#f59e0b',
+      'Churned': '#e91e63'
+    };
+    
+    // Donut Chart
+    const donutCtx = document.getElementById('churnDonutChart');
+    if (donutCtx) {
+      new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: statusOrder,
+          datasets: [{
+            data: statusOrder.map(s => churnSegs[s] ? churnSegs[s].count : 0),
+            backgroundColor: statusOrder.map(s => colors[s])
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+    
+    // Bar Chart
+    const barCtx = document.getElementById('churnBarChart');
+    if (barCtx) {
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: statusOrder,
+          datasets: [{
+            label: 'Avg Credit Score',
+            data: statusOrder.map(s => churnSegs[s] ? churnSegs[s].avg_credit : 0),
+            backgroundColor: statusOrder.map(s => colors[s])
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 800
+            }
+          }
+        }
+      });
+    }
+  });
+  </script>
+
+</body>
+</html>
 </body>
