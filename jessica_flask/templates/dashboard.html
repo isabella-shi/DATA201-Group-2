@@ -118,19 +118,41 @@
       <div class="stat-value" style="color:var(--green)">{{ mom_peak_month }}</div>
     </div>
     <div class="stat">
-      <div class="stat-label">Avg MoM Change (2018)</div>
-      <div class="stat-value" style="color:var(--amber)">{% if avg_mom_pct >= 0 %}+{% endif %}{{ avg_mom_pct }}%</div>
+      <div class="stat-label">Avg YoY Growth</div>
+      <div class="stat-value" style="color:var(--amber)">{% if avg_yoy_pct >= 0 %}+{% endif %}{{ avg_yoy_pct }}%</div>
     </div>
     <div class="stat">
-      <div class="stat-label">Best Single MoM (2018)</div>
-      <div class="stat-value" style="color:var(--green)">+{{ best_mom_pct }}%</div>
+      <div class="stat-label">Best YoY Month</div>
+      <div class="stat-value" style="color:var(--green)">{% if best_yoy_pct >= 0 %}+{% endif %}{{ best_yoy_pct }}%</div>
     </div>
   </div>
 
   <div class="grid">
     <div class="card full blue">
-      <h2>Monthly Spend &amp; MoM % Change — 2018 Only</h2>
-      <div class="sub">Window functions: LAG() for month-over-month comparison</div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <div>
+          <h2 id="chart-mom-title">Monthly Spend &amp; YoY % Change</h2>
+          <div class="sub">Window functions: LAG(column, 12) for year-over-year comparison</div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="font-family: var(--mono); font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em;">YEAR:</label>
+            <select id="year-filter" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-family: var(--mono); font-size: 0.7rem; cursor: pointer;">
+              {% for year in available_years %}
+              <option value="{{ year }}" {% if year == latest_year %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="font-family: var(--mono); font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em;">METRIC:</label>
+            <select id="metric-filter" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-family: var(--mono); font-size: 0.7rem; cursor: pointer;">
+              <option value="spend">Total Spend</option>
+              <option value="transactions">Total Transactions</option>
+              <option value="customers">Active Customers</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <div id="chart-mom" style="height:380px"></div>
     </div>
 
@@ -258,46 +280,93 @@ function switchTab(name) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PANEL 1: MoM TRANSACTIONS
+// PANEL 1: YoY TRANSACTIONS (ALL YEARS)
 // ════════════════════════════════════════════════════════════════════
-const mom2018Data = {{ mom_2018 | tojson }};
+const yoyAllData = {{ yoy_all | tojson }};
 const cumulativeData = {{ cumulative | tojson }};
 
-// Chart 1: 2018 Monthly Spend + MoM %
-Plotly.newPlot('chart-mom', [
-  {
-    type: 'bar',
-    name: 'Monthly Spend',
-    x: mom2018Data.map(r => r.month),
-    y: mom2018Data.map(r => parseFloat(r.total_spend)),
-    marker: {
-      color: mom2018Data.map(r => (r.mom_pct_change === null || r.mom_pct_change >= 0)
-        ? 'rgba(91,141,238,0.75)'
-        : 'rgba(232,93,117,0.6)')
-    },
-    yaxis: 'y',
-    hovertemplate: '<b>%{x}</b><br>Spend: $%{y:,.0f}<extra></extra>',
-  },
-  {
-    type: 'scatter',
-    name: 'MoM % Change',
-    mode: 'lines+markers',
-    x: mom2018Data.map(r => r.month),
-    y: mom2018Data.map(r => r.mom_pct_change),
-    line: { color: '#f59e0b', width: 2.5, shape: 'spline' },
-    marker: { size: 5, color: '#f59e0b' },
-    yaxis: 'y2',
-    hovertemplate: '<b>%{x}</b><br>MoM: %{y}%<extra></extra>',
+// Debug: Check if YoY data exists
+console.log('Total YoY records:', yoyAllData.length);
+console.log('Sample record:', yoyAllData[0]);
+
+// Chart 1: YoY Spend + % Change with Year Filter
+function renderMomChart(metric = 'spend', selectedYear = {{ latest_year }}) {
+  // Filter data for selected year
+  const yearData = yoyAllData.filter(r => r.year === selectedYear);
+  
+  let yData, title, yAxisLabel, tickformat;
+  
+  switch(metric) {
+    case 'transactions':
+      yData = yearData.map(r => parseFloat(r.total_transactions));
+      title = 'Monthly Transactions & YoY % Change — ' + selectedYear;
+      yAxisLabel = 'Total Transactions';
+      tickformat = ',';
+      break;
+    case 'customers':
+      yData = yearData.map(r => parseFloat(r.active_customers));
+      title = 'Active Customers & YoY % Change — ' + selectedYear;
+      yAxisLabel = 'Active Customers';
+      tickformat = ',';
+      break;
+    default: // spend
+      yData = yearData.map(r => parseFloat(r.total_spend));
+      title = 'Monthly Spend & YoY % Change — ' + selectedYear;
+      yAxisLabel = 'Total Spend ($)';
+      tickformat = '$,.0s';
   }
-], {
-  ...base,
-  margin: { t:10, b:60, l:80, r:80 },
-  xaxis: { gridcolor: GRID, tickfont: { color: MUTED } },
-  yaxis: { gridcolor: GRID, tickfont: { color: MUTED }, title: { text: 'Total Spend ($)', font: { color: MUTED, size: 10 } }, tickformat: '$,.0s' },
-  yaxis2: { gridcolor: GRID, tickfont: { color: '#f59e0b' }, title: { text: 'MoM % Change', font: { color: '#f59e0b', size: 10 } }, ticksuffix: '%', overlaying: 'y', side: 'right', zeroline: true, zerolinecolor: 'rgba(245,158,11,0.3)' },
-  legend: { orientation: 'h', y: -0.18, font: { color: MUTED, size: 10 }, bgcolor: 'transparent' },
-  bargap: 0.3,
-}, cfg);
+  
+  document.getElementById('chart-mom-title').innerHTML = title;
+  
+  Plotly.newPlot('chart-mom', [
+    {
+      type: 'bar',
+      name: metric === 'spend' ? 'Monthly Spend' : metric === 'transactions' ? 'Total Transactions' : 'Active Customers',
+      x: yearData.map(r => r.month),
+      y: yData,
+      marker: {
+        color: yearData.map(r => (r.yoy_pct_change === null || r.yoy_pct_change >= 0)
+          ? 'rgba(91,141,238,0.75)'
+          : 'rgba(232,93,117,0.6)')
+      },
+      yaxis: 'y',
+      hovertemplate: '<b>%{x}</b><br>' + (metric === 'spend' ? 'Spend: $%{y:,.0f}' : '%{y:,.0f}') + '<extra></extra>',
+    },
+    {
+      type: 'scatter',
+      name: 'YoY % Change',
+      mode: 'lines+markers',
+      x: yearData.map(r => r.month),
+      y: yearData.map(r => r.yoy_pct_change),
+      line: { color: '#f59e0b', width: 3, shape: 'linear' },
+      marker: { size: 8, color: '#f59e0b' },
+      yaxis: 'y2',
+      hovertemplate: '<b>%{x}</b><br>YoY: %{y}%<extra></extra>',
+    }
+  ], {
+    ...base,
+    margin: { t:10, b:60, l:80, r:80 },
+    xaxis: { gridcolor: GRID, tickfont: { color: MUTED } },
+    yaxis: { gridcolor: GRID, tickfont: { color: MUTED }, title: { text: yAxisLabel, font: { color: MUTED, size: 10 } }, tickformat: tickformat },
+    yaxis2: { gridcolor: GRID, tickfont: { color: '#f59e0b' }, title: { text: 'YoY % Change', font: { color: '#f59e0b', size: 10 } }, ticksuffix: '%', overlaying: 'y', side: 'right', zeroline: true, zerolinecolor: 'rgba(245,158,11,0.3)' },
+    legend: { orientation: 'h', y: -0.18, font: { color: MUTED, size: 10 }, bgcolor: 'transparent' },
+    bargap: 0.3,
+  }, cfg);
+}
+
+// Initial render
+renderMomChart('spend', {{ latest_year }});
+
+// Add event listeners for dropdowns
+document.getElementById('metric-filter').addEventListener('change', function(e) {
+  const selectedYear = parseInt(document.getElementById('year-filter').value);
+  renderMomChart(e.target.value, selectedYear);
+});
+
+document.getElementById('year-filter').addEventListener('change', function(e) {
+  const selectedMetric = document.getElementById('metric-filter').value;
+  renderMomChart(selectedMetric, parseInt(e.target.value));
+});
 
 // Chart 2: All-time Cumulative + Rolling Avg
 Plotly.newPlot('chart-rolling', [
