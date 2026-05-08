@@ -5,32 +5,34 @@ import functools
 app = Flask(__name__)
 
 
-# ── MoM TRANSACTION DATA - 2018 ONLY ────────────────────────────────────────
+# ── YoY TRANSACTION DATA - ALL YEARS ────────────────────────────────────────
 @functools.lru_cache(maxsize=None)
-def get_mom_2018_data():
+def get_yoy_all_years_data():
     sql = """
         WITH monthly_totals AS (
             SELECT
                 DATE_FORMAT(t.date, '%Y-%m')      AS month,
+                YEAR(t.date)                       AS year,
                 COUNT(t.id)                        AS total_transactions,
                 COUNT(DISTINCT c.client_id)        AS active_customers,
                 ROUND(SUM(t.amount), 2)            AS total_spend,
                 ROUND(AVG(t.amount), 2)            AS avg_transaction_size
-            FROM transactions t
+            FROM transactions_sample t
             JOIN cards c ON t.card_id = c.id
-            WHERE YEAR(t.date) = 2018
-            GROUP BY month
+            GROUP BY month, year
         )
         SELECT
             month,
+            year,
             total_transactions,
             active_customers,
             total_spend,
             avg_transaction_size,
-            ROUND(total_spend - LAG(total_spend) OVER (ORDER BY month), 2) AS mom_spend_change,
-            ROUND((total_spend - LAG(total_spend) OVER (ORDER BY month))
-                / LAG(total_spend) OVER (ORDER BY month) * 100, 1)         AS mom_pct_change
+            ROUND(total_spend - LAG(total_spend, 12) OVER (ORDER BY month), 2) AS yoy_spend_change,
+            ROUND((total_spend - LAG(total_spend, 12) OVER (ORDER BY month))
+                / LAG(total_spend, 12) OVER (ORDER BY month) * 100, 1)         AS yoy_pct_change
         FROM monthly_totals
+        WHERE year >= 2014  -- Only show years with YoY comparison (2014 compares to 2013)
         ORDER BY month;
     """
     return query(sql)
@@ -44,7 +46,7 @@ def get_cumulative_data():
             SELECT
                 DATE_FORMAT(t.date, '%Y-%m')      AS month,
                 ROUND(SUM(t.amount), 2)            AS total_spend
-            FROM transactions t
+            FROM transactions_sample t
             JOIN cards c ON t.card_id = c.id
             GROUP BY month
         )
@@ -72,7 +74,7 @@ def get_churn_data():
                 COUNT(t.id)               AS lifetime_transactions,
                 ROUND(SUM(t.amount))      AS lifetime_spend,
                 COUNT(DISTINCT t.card_id) AS cards_used
-            FROM transactions t
+            FROM transactions_sample t
             JOIN cards c ON t.card_id = c.id
             GROUP BY c.client_id
         )
@@ -104,13 +106,24 @@ def get_churn_data():
 @app.route("/")
 def insights():
 
-    # MoM dataset - 2018 only
-    mom_2018 = get_mom_2018_data()
-    mom_peak_month = max(mom_2018, key=lambda r: float(r['total_spend'] or 0))['month'] if mom_2018 else '—'
-    valid_pct      = [float(r['mom_pct_change']) for r in mom_2018 if r['mom_pct_change'] is not None]
-    avg_mom_pct    = round(sum(valid_pct) / len(valid_pct), 1) if valid_pct else 0
-    best_mom_pct   = round(max(valid_pct), 1) if valid_pct else 0
-    total_volume_2018 = sum(float(r['total_spend'] or 0) for r in mom_2018)
+    # YoY dataset - all years
+    yoy_all = get_yoy_all_years_data()
+    
+    # Extract available years for filter dropdown
+    available_years = sorted(list(set([r['year'] for r in yoy_all])), reverse=True)
+    
+    # Default to most recent year for initial stats
+    latest_year = max(available_years) if available_years else 2018
+    yoy_latest = [r for r in yoy_all if r['year'] == latest_year]
+    
+    mom_peak_month = max(yoy_latest, key=lambda r: float(r['total_spend'] or 0))['month'] if yoy_latest else '—'
+    
+    # YoY stats for latest year
+    valid_yoy_pct = [float(r['yoy_pct_change']) for r in yoy_latest if r['yoy_pct_change'] is not None]
+    avg_yoy_pct = round(sum(valid_yoy_pct) / len(valid_yoy_pct), 1) if valid_yoy_pct else 0
+    best_yoy_pct = round(max(valid_yoy_pct), 1) if valid_yoy_pct else 0
+    
+    total_volume_latest = sum(float(r['total_spend'] or 0) for r in yoy_latest)
 
     # Cumulative dataset - all time
     cumulative = get_cumulative_data()
@@ -134,17 +147,19 @@ def insights():
         [r for r in churn if r['activity_status'] == 'At Risk'],
         key=lambda r: float(r['lifetime_spend'] or 0),
         reverse=True
-    )[:10]  # Top 10 instead of 6
+    )[:10]  # Top 10
 
     return render_template(
         "dashboard.html",
-        # MoM
-        mom_2018=mom_2018,
+        # YoY - all years
+        yoy_all=yoy_all,
+        available_years=available_years,
+        latest_year=latest_year,
         cumulative=cumulative,
         mom_peak_month=mom_peak_month,
-        avg_mom_pct=avg_mom_pct,
-        best_mom_pct=best_mom_pct,
-        total_volume=total_volume_2018,
+        avg_yoy_pct=avg_yoy_pct,
+        best_yoy_pct=best_yoy_pct,
+        total_volume=total_volume_latest,
         # Churn
         churn=churn,
         segments=segments,
